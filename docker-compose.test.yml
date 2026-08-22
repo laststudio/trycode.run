@@ -1,0 +1,136 @@
+# Test-specific docker-compose overrides
+# Used for integration testing
+
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.all-in-one
+    image: trycode/backend:test
+    environment:
+      - CONFIG_FILE=/config/backend.test.toml
+      - RUST_LOG=debug,sqlx=debug
+      - TEST_MODE=true
+    volumes:
+      - ./config/backend.test.toml:/config/backend.test.toml:ro
+      - ./config/vector.toml:/etc/vector/vector.toml:ro
+      - ./config/vm-scrape.yml:/etc/victoriametrics/scrape.yml:ro
+    tmpfs:
+      - /tmp:size=200M,exec
+      - /data:size=500M
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  exec-worker-1:
+    build:
+      context: ./executor
+      dockerfile: Dockerfile
+    image: trycode/executor:test
+    environment:
+      - WORKER_ID=1
+      - METRICS_PORT=9090
+      - RUST_LOG=debug
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [SYS_PTRACE]
+    read_only: true
+    tmpfs:
+      - /workspace:size=200M,exec,uid=1000,gid=1000,mode=1777
+      - /tmp:size=50M,exec
+    network_mode: "none"
+
+  exec-worker-2:
+    build:
+      context: ./executor
+      dockerfile: Dockerfile
+    image: trycode/executor:test
+    environment:
+      - WORKER_ID=2
+      - METRICS_PORT=9090
+      - RUST_LOG=debug
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [SYS_PTRACE]
+    read_only: true
+    tmpfs:
+      - /workspace:size=200M,exec,uid=1000,gid=1000,mode=1777
+      - /tmp:size=50M,exec
+    network_mode: "none"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=trycode
+      - POSTGRES_PASSWORD=trycode
+      - POSTGRES_DB=trycode_test
+    ports: ["5432:5432"]
+    tmpfs:
+      - /var/lib/postgresql/data:size=500M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trycode"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    tmpfs:
+      - /data:size=100M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  victoria:
+    image: victoriametrics/victoria-metrics:v1.100.0
+    command:
+      - '--retentionPeriod=1d'
+      - '--storageDataPath=/victoria-metrics-data'
+      - '--httpListenAddr=:8428'
+    tmpfs:
+      - /victoria-metrics-data:size=200M
+    ports: ["8428:8428"]
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.100.0
+    command:
+      - '--retentionPeriod=1d'
+      - '--storageDataPath=/victoria-logs-data'
+      - '--httpListenAddr=:9428'
+    tmpfs:
+      - /victoria-logs-data:size=200M
+    ports: ["9428:9428"]
+
+  vector:
+    image: timberio/vector:0.41.1-alpine
+    volumes:
+      - ./config/vector.toml:/etc/vector/vector.toml:ro
+    ports: ["8686:8686"]
+
+networks:
+  default:
+    name: trycode-test
+    driver: bridge

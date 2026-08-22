@@ -1,0 +1,17 @@
+[package]
+name = "trycode-collab"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trycode-core = { path = "../trycode-core" }
+yrs = { workspace = true }
+yrs-awareness = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+tungstenite = "0.21"
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }

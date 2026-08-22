@@ -1,0 +1,81 @@
+# Backend All-in-One Dockerfile with s6-overlay
+# Runs: Rust API (Axum) + VictoriaMetrics + VictoriaLogs + Vector
+
+# Stage 1: Build Rust API
+FROM rust:1.80-slim-bookworm AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config libssl-dev clang lld \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace
+COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/src ./src
+
+# Build release binary
+RUN cargo build --release --bin trycode-backend
+
+# Stage 2: Runtime with s6-overlay
+FROM debian:12-slim AS runtime
+
+# Install s6-overlay
+ENV S6_VERSION=3.1.6.2
+ENV S6_ARCH=amd64
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_VERSION}/s6-overlay-${S6_ARCH}.tar.gz /tmp/
+RUN tar xzf /tmp/s6-overlay-${S6_ARCH}.tar.gz -C / && rm /tmp/s6-overlay-${S6_ARCH}.tar.gz
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget \
+    gnupg \
+    libssl3 \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install VictoriaMetrics
+ENV VM_VERSION=v1.100.0
+RUN curl -fsSL https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/${VM_VERSION}/victoria-metrics-linux-amd64-${VM_VERSION}.tar.gz | tar xz -C /usr/local/bin victoria-metrics-prod && \
+    mv /usr/local/bin/victoria-metrics-prod /usr/local/bin/victoria-metrics && \
+    chmod +x /usr/local/bin/victoria-metrics
+
+# Install VictoriaLogs
+ENV VL_VERSION=v1.100.0
+RUN curl -fsSL https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/${VL_VERSION}/victoria-logs-linux-amd64-${VL_VERSION}.tar.gz | tar xz -C /usr/local/bin victoria-logs-prod && \
+    mv /usr/local/bin/victoria-logs-prod /usr/local/bin/victoria-logs && \
+    chmod +x /usr/local/bin/victoria-logs
+
+# Install Vector
+ENV VECTOR_VERSION=0.41.1
+RUN curl -fsSL https://packages.timber.io/vector/${VECTOR_VERSION}/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin --strip-components=1 && \
+    chmod +x /usr/local/bin/vector
+
+# Create non-root user
+RUN groupadd -g 1000 trycode && useradd -u 1000 -g trycode -m -s /bin/bash trycode
+
+# Create directories
+RUN mkdir -p /data/vm /data/vl /data/backend /config /etc/vector /etc/victoriametrics /etc/s6 \
+    && chown -R trycode:trycode /data /config /etc/vector /etc/victoriametrics
+
+# Copy Rust binary
+COPY --from=builder /app/target/release/trycode-backend /usr/local/bin/trycode-backend
+RUN chmod +x /usr/local/bin/trycode-backend
+
+# s6 service definitions
+COPY backend/s6 /etc/s6
+
+# Make sure s6 scripts are executable
+RUN find /etc/s6 -name run -o -name finish | xargs chmod +x
+
+# Switch to non-root
+USER trycode:trycode
+
+# Expose ports
+EXPOSE 3000 8428 9428
+
+# Entrypoint
+ENTRYPOINT ["/init"]

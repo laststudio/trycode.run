@@ -1,0 +1,110 @@
+[server]
+host = "0.0.0.0"
+port = 3000
+workers = 4
+shutdown_timeout_secs = 30
+
+[database]
+host = "pgdocker"
+port = 5432
+name = "trycode"
+user = "trycode"
+password = "secret"
+max_connections = 10
+min_connections = 2
+
+[redis]
+host = "redisdocker"
+port = 6379
+password = "secret"
+db = 0
+max_connections = 20
+
+[smtp]
+host = "smtp.example.com"
+port = 587
+username = "noreply@trycode.run"
+password = "secret"
+from = "TryCode <noreply@trycode.run>"
+tls = "starttls"
+
+[captcha]
+provider = "trycap"
+site_key = ""
+secret_key = "secret"
+verify_url = "http://trycap:8080/api/v1/verify"
+enabled = true
+actions = ["register", "login", "execute"]
+
+[oauth.github]
+enabled = false
+client_id = ""
+client_secret = "secret"
+redirect_url = "https://trycode.run/api/auth/oauth/github/callback"
+scopes = ["read:user", "user:email"]
+allowed_domains = []
+auto_create_user = true
+default_role = "user"
+
+[ai]
+enabled = true
+base_url = "https://api.openai.com/v1"
+api_key = "secret"
+default_model = "gpt-4o-mini"
+max_tokens = 4096
+temperature = 0.3
+timeout_secs = 30
+
+[execution]
+worker_names = ["exec-worker-1", "exec-worker-2"]
+docker_host = "unix:///var/run/docker.sock"
+default_timeout_secs = 30
+max_timeout_secs = 120
+max_output_bytes = 1048576
+global_max_concurrent = 4
+per_user_max_concurrent = 2
+queue_timeout_secs = 60
+default_cpu_time_secs = 30
+default_memory_mb = 256
+default_disk_mb = 100
+default_wall_time_secs = 60
+container_cpu_quota = 100000
+container_memory_mb = 768
+container_pids_limit = 100
+wasm_timeout_ms = 5000
+wasm_preload = ["python", "javascript", "typescript"]
+wasm_fallback_triggers = ["timeout", "oom", "missing_runtime", "compile_error", "network_error"]
+
+[collab]
+persist_interval_secs = 30
+max_doc_size_bytes = 10485760
+awareness_ttl_secs = 300
+
+[sharing]
+token_length = 24
+default_expiry_days = 7
+max_expiry_days = 365
+
+[lsp]
+enabled = true
+websocket_port = 3001
+max_connections = 1000
+request_timeout_secs = 30
+max_request_size = 10485760
+enable_compression = true
+heartbeat_interval_secs = 30
+max_message_size = 10485760
+max_connections_per_language = 100
+
+[features]
+registration_enabled = true
+email_verification_required = true
+ai_enabled = true
+collab_enabled = true
+share_enabled = true
+exec_wasm_fallback = true
+exec_queue_enabled = true
+captcha_enabled = true
+oauth_enabled = true
+maintenance_mode = false
+exec_lsp_enabled = true

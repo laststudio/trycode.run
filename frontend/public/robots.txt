@@ -1,0 +1,70 @@
+# TryCode Robots.txt
+# Generated automatically - do not edit manually
+
+User-agent: *
+Allow: /
+
+# 禁止爬取的路径
+Disallow: /api/
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /login
+Disallow: /register
+Disallow: /verify
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /editor
+Disallow: /projects/*/edit
+Disallow: /projects/*/settings
+Disallow: /share/
+Disallow: /_next/
+Disallow: /static/
+Disallow: /assets/
+Disallow: /*.json$
+Disallow: /*.xml$
+
+# 允许爬取的重要路径
+Allow: /
+Allow: /editor
+Allow: /projects/
+Allow: /docs/
+Allow: /docs/*
+Allow: /pricing
+Allow: /about
+Allow: /changelog
+Allow: /changelog/*
+Allow: /docs/*
+Allow: /share/*
+Allow: /assets/*.css
+Allow: /assets/*.js
+Allow: /assets/*.woff2
+Allow: /assets/*.woff
+Allow: /assets/*.ttf
+Allow: /favicon.svg
+Allow: /favicon.ico
+Allow: /robots.txt
+Allow: /sitemap.xml
+
+# Sitemap
+Sitemap: https://trycode.run/sitemap.xml
+
+# Host
+Host: https://trycode.run
+
+# Crawl-delay (可选，防止过度爬取)
+Crawl-delay: 10
+
+# 安全相关
+# 禁止访问敏感文件
+Disallow: /*.env
+Disallow: /*.config
+Disallow: /*.log
+Disallow: /*.bak
+Disallow: /*.backup
+Disallow: /*.sql
+Disallow: /*.db
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /.vscode/
+Disallow: /node_modules/
+Disallow: /vendor/

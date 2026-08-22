@@ -1,0 +1,35 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['127.0.0.1:3000']
+        labels:
+          service: 'trycode-backend'
+          environment: 'production'
+
+  - job_name: 'exec-workers'
+    static_configs:
+      - targets: ['exec-worker-1:9090', 'exec-worker-2:9090']
+        labels:
+          environment: 'production'
+
+  - job_name: 'victoria-metrics'
+    static_configs:
+      - targets: ['127.0.0.1:8428']
+        labels:
+          service: 'victoria-metrics'
+
+  - job_name: 'victoria-logs'
+    static_configs:
+      - targets: ['127.0.0.1:9428']
+        labels:
+          service: 'victoria-logs'
+
+  - job_name: 'vector'
+    static_configs:
+      - targets: ['127.0.0.1:8686']
+        labels:
+          service: 'vector'

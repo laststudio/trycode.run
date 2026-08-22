@@ -1,0 +1,131 @@
+; TryCode.run Cloudflare DNS Configuration
+; Import this file in Cloudflare DNS > Import/Export > Import DNS Records
+; Server IP: 45.207.201.35
+; Generated: 2026-01-15
+
+; ============================================================================
+; MAIN DOMAIN RECORDS
+; ============================================================================
+
+; Root domain - points to OpenResty (HTTPS termination)
+trycode.run.        300    IN    A       45.207.201.35
+trycode.run.        300    IN    AAAA    ::1
+
+; WWW subdomain - CNAME to root
+www.trycode.run.    300    IN    CNAME   trycode.run.
+
+; ============================================================================
+; SUBDOMAINS FOR SERVICES
+; ============================================================================
+
+; API subdomain (direct to backend, bypasses OpenResty if needed)
+api.trycode.run.    300    IN    A       45.207.201.35
+
+; Admin panel subdomain
+admin.trycode.run.  300    IN    A       45.207.201.35
+
+; WebSocket/Collaboration subdomain
+ws.trycode.run.     300    IN    A       45.207.201.35
+
+; Share links subdomain (clean URLs)
+s.trycode.run.      300    IN    A       45.207.201.35
+
+; Static assets / CDN subdomain
+assets.trycode.run. 300    IN    A       45.207.201.35
+
+; Monitoring / Metrics (internal, restricted by firewall)
+metrics.trycode.run. 300   IN    A       45.207.201.35
+
+; Logs / Debugging (internal, restricted by firewall)
+logs.trycode.run.   300    IN    A       45.207.201.35
+
+; ============================================================================
+; EMAIL RECORDS (for transactional emails)
+; ============================================================================
+
+; SPF record
+trycode.run.        3600   IN    TXT     "v=spf1 ip4:45.207.201.35 ~all"
+
+; DKIM (replace with your actual DKIM key)
+; mail._domainkey.trycode.run. 3600 IN TXT "v=DKIM1; k=rsa; p=YOUR_DKIM_PUBLIC_KEY"
+
+; DMARC
+_dmarc.trycode.run. 3600   IN    TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc@trycode.run; ruf=mailto:dmarc@trycode.run; fo=1"
+
+; ============================================================================
+; VERIFICATION RECORDS (for various services)
+; ============================================================================
+
+; Google Search Console
+; google-site-verification=YOUR_VERIFICATION_CODE
+
+; Bing Webmaster Tools
+; msvalidate.01=YOUR_VERIFICATION_CODE
+
+; ============================================================================
+; WILDCARD (optional - for dynamic subdomains like user projects)
+; ============================================================================
+
+; *.trycode.run.      300    IN    A       45.207.201.35
+
+; ============================================================================
+; CAA RECORD (Certificate Authority Authorization)
+; ============================================================================
+
+trycode.run.        3600   IN    CAA     0 issue "letsencrypt.org"
+trycode.run.        3600   IN    CAA     0 issue "sectigo.com"
+trycode.run.        3600   IN    CAA     0 iodef "mailto:security@trycode.run"
+
+; ============================================================================
+; TLSA RECORD (DANE - if using DNSSEC)
+; ============================================================================
+
+; _443._tcp.trycode.run. 3600 IN TLSA 3 1 1 <SHA256_OF_YOUR_CERT>
+
+; ============================================================================
+; SRV RECORDS (if needed for specific services)
+; ============================================================================
+
+; _http._tcp.trycode.run. 3600 IN SRV 0 5 80 trycode.run.
+; _https._tcp.trycode.run. 3600 IN SRV 0 5 443 trycode.run.
+
+; ============================================================================
+; NOTES FOR CLOUDFLARE CONFIGURATION
+; ============================================================================
+
+; 1. After importing, enable "Orange Cloud" (Proxy) for:
+;    - trycode.run
+;    - www.trycode.run
+;    - admin.trycode.run
+;    - s.trycode.run
+;    - assets.trycode.run
+;
+; 2. Keep "Gray Cloud" (DNS Only) for:
+;    - metrics.trycode.run (if internal)
+;    - logs.trycode.run (if internal)
+;    - ws.trycode.run (if WebSocket needs direct connection)
+;
+; 3. Configure SSL/TLS:
+;    - SSL/TLS encryption mode: "Full (strict)"
+;    - Always Use HTTPS: On
+;    - Automatic HTTPS Rewrites: On
+;    - Minimum TLS Version: TLS 1.2
+;
+; 4. Configure Page Rules:
+;    - trycode.run/* -> Always Use HTTPS
+;    - trycode.run/api/* -> Cache Level: Bypass
+;    - trycode.run/api/collab/* -> Cache Level: Bypass + Disable Performance
+;    - trycode.run/admin/* -> Cache Level: Bypass + Security Level: High
+;    - trycode.run/assets/* -> Cache Level: Cache Everything, Edge TTL: 1 year
+;
+; 5. Configure WAF Rules:
+;    - Block known bad bots
+;    - Rate limit /api/auth/* (5 req/min per IP)
+;    - Rate limit /api/execute/* (30 req/min per IP)
+;    - Block SQL injection attempts
+;    - Block XSS attempts
+;
+; 6. Configure Workers (optional):
+;    - Custom error pages
+;    - A/B testing
+;    - Edge caching for static assets

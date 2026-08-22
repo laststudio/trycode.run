@@ -1,0 +1,9 @@
+#!/bin/bash
+# VictoriaMetrics service
+
+exec victoria-metrics \
+    -storageDataPath=/data/vm \
+    -retentionPeriod=30d \
+    -httpListenAddr=:8428 \
+    -promscrape.config=/etc/victoriametrics/scrape.yml \
+    -loggerFormat=json

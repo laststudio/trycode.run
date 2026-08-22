@@ -1,0 +1,226 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { LSPWSMessage, LSPWSError } from '../../types/lsp';
+
+// LSP 客户端 Hook
+export function useLSPClient(languageId?: string) {
+  const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState(0);
+  const pendingRequests = useRef<Map<number, (result: any) => void>>(new Map());
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
+  const reconnectDelay = 2000;
+
+  // 连接到 LSP WebSocket
+  const connect = useCallback(async (lang: string) => {
+    if (!lang) return;
+    
+    setConnecting(true);
+    setError(null);
+
+    try {
+      const wsUrl = `${import.meta.env.VITE_WS_BASE || 'ws://localhost:3001'}/api/lsp/ws?language_id=${lang}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log(`LSP WebSocket connected for ${lang}`);
+        setConnected(true);
+        setConnecting(false);
+        reconnectAttempts.current = 0;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message: LSPWSMessage = JSON.parse(event.data);
+          handleMessage(message);
+        } catch (e) {
+          console.error('Failed to parse LSP message:', e);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('LSP WebSocket error:', error);
+        setError('WebSocket connection error');
+      };
+
+      ws.onclose = (event) => {
+        setConnected(false);
+        console.log(`LSP WebSocket closed: ${event.code} ${event.reason}`);
+        
+        // 自动重连
+        if (reconnectAttempts.current < 5) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttempts.current++;
+            // 这里需要重新连接，但需要语言 ID
+            // 实际实现中需要保存 languageId
+          }, 2000 * Math.pow(2, reconnectAttempts.current));
+        }
+      };
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Connection failed');
+      setConnecting(false);
+    }
+  }, []);
+
+  // 处理接收到的消息
+  const handleMessage = useCallback((message: LSPWSMessage) => {
+    switch (message.type) {
+      case 'response':
+        const pending = pendingRequests.current.get(message.request_id);
+        if (pending) {
+          pendingRequests.current.delete(message.request_id);
+          if (message.error) {
+            pending((err: any) => { throw new Error(message.error?.message || 'LSP error') });
+          } else {
+            pending(message.result);
+          }
+        }
+        break;
+      case 'notification':
+        // 处理通知（诊断、日志等）
+        console.log('LSP notification:', message.method, message.params);
+        break;
+      case 'error':
+        console.error('LSP error:', message.message);
+        break;
+      case 'pong':
+        // 心跳响应
+        break;
+    }
+  }, []);
+
+  // 发送请求
+  const sendRequest = useCallback(async (method: string, params?: any): Promise<any> => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket not connected');
+    }
+
+    const requestId = Date.now() + Math.random();
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        pendingRequests.current.delete(requestId);
+        reject(new Error('Request timeout'));
+      }, 30000);
+
+      pendingRequests.current.set(requestId, (result: any) => {
+        clearTimeout(timeout);
+        resolve(result);
+      });
+
+      const message: LSPWSMessage = {
+        type: 'request',
+        request_id: Date.now(),
+        language_id: '', // 这里需要填入语言 ID
+        method,
+        params,
+      };
+
+      wsRef.current?.send(JSON.stringify({
+        type: 'request',
+        request_id: Date.now(),
+        language_id: '', // 需要实际的语言 ID
+        method,
+        params,
+      }));
+    }, []);
+
+  // 发送通知
+  const sendNotification = useCallback(async (method: string, params?: any) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(JSON.stringify({
+      type: 'notification',
+      method,
+      params,
+    }));
+  }, []);
+
+  // 断开连接
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setConnected(false);
+  }, []);
+
+  // 清理
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
+  return {
+    connected,
+    connecting,
+    error,
+    connect: languageId ? () => connect(languageId) : connect,
+    disconnect,
+    sendRequest,
+    sendNotification,
+  };
+};
+
+// LSP 多路复用器 Hook
+export function useLSPMultiplexer() {
+  const [clients, setClients] = useState<Map<string, any>>(new Map());
+  const [globalMode, setGlobalMode] = useState<'monaco' | 'lsp' | 'hybrid'>('hybrid');
+
+  // 获取客户端
+  const getClient = useCallback((languageId: string) => {
+    // 实际实现中从多路复用器获取客户端
+    return null;
+  }, []);
+
+  // 启动客户端
+  const startClient = useCallback(async (languageId: string) => {
+    // 实际实现中启动 LSP 客户端
+  }, []);
+
+  // 停止客户端
+  const stopClient = useCallback(async (languageId: string) => {
+    // 实际实现中停止 LSP 客户端
+  }, []);
+
+  // 重启客户端
+  const restartClient = useCallback(async (languageId: string) => {
+    // 实际实现中重启客户端
+  }, []);
+
+  // 获取所有客户端状态
+  const getAllStatus = useCallback(async () => {
+    // 实际实现中获取所有客户端状态
+    return [];
+  }, []);
+
+  // 设置全局模式
+  const setGlobalMode = useCallback((mode: 'monaco' | 'lsp' | 'hybrid') => {
+    setGlobalMode(mode);
+  }, []);
+
+  return {
+    globalMode,
+    setGlobalMode,
+    getClient,
+    startClient,
+    stopClient,
+    restartClient,
+    getAllStatus,
+  };
+}

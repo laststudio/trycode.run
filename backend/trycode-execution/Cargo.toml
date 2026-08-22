@@ -1,0 +1,16 @@
+[package]
+name = "trycode-execution"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trycode-core = { path = "../trycode-core" }
+bollard = { workspace = true }
+tokio = { workspace = true }
+async-channel = { workspace = true }
+futures = { workspace = true }
+dashmap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = thiserror }
+anyhow = { workspace = true }
+tracing = { workspace = true }

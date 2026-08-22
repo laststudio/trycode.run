@@ -1,0 +1,16 @@
+[package]
+name = "trycode-admin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trycode-core = { path = "../trycode-core" }
+trycode-auth = { path = "../trycode-auth" }
+trycode-execution = { path = "../trycode-execution" }
+trycode-projects = { path = "../trycode-projects" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+figment = { workspace = true }

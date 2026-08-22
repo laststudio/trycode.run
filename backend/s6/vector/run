@@ -1,0 +1,4 @@
+#!/bin/bash
+# Vector log collector service
+
+exec vector --config /etc/vector/vector.toml

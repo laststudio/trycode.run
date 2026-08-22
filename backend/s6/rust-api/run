@@ -1,0 +1,20 @@
+#!/bin/bash
+# Rust API service
+
+# Wait for database to be ready
+until pg_isready -h pgdocker -p 5432 -U trycode -q; do
+    echo "Waiting for PostgreSQL..."
+    sleep 2
+done
+
+# Wait for Redis to be ready
+until redis-cli -h redisdocker -p 6379 ping > /dev/null 2>&1; do
+    echo "Waiting for Redis..."
+    sleep 2
+done
+
+# Run migrations
+trycode-backend migrate
+
+# Start API server
+exec trycode-backend serve

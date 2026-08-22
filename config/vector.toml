@@ -1,0 +1,47 @@
+# Vector configuration for log collection
+# Collects Docker container logs and forwards to VictoriaLogs
+
+data_dir = "/var/lib/vector"
+
+[sources.docker_logs]
+type = "docker_logs"
+include_labels = true
+exclude_labels = ["com.docker.compose.project"]
+include_containers = ["trycode-backend", "trycode-exec-1", "trycode-exec-2"]
+
+[transforms.add_service]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+  .service = .container_labels["com.docker.compose.service"] ?? "unknown"
+  .container = .container_name
+  .container_id = .container_id
+'''
+
+[transforms.parse_json]
+type = "remap"
+inputs = ["add_service"]
+source = '''
+  .message = .message ?? ""
+  # Try to parse structured JSON logs
+  if .message.starts_with("{") {
+    parsed, err = parse_json(.message)
+    if err == null {
+      . = merge(., parsed)
+    }
+  }
+'''
+
+[sinks.victorialogs]
+type = "http"
+inputs = ["parse_json"]
+uri = "http://127.0.0.1:9428/insert/json"
+batch.max_size = 100
+batch.timeout_secs = 5
+compression = "gzip"
+encoding.codec = "json"
+
+# Health check endpoint
+[health_check]
+enabled = true
+address = "0.0.0.0:8686"

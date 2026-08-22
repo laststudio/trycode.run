@@ -1,0 +1,69 @@
+; TryCode.run BIND Zone File
+; For direct import into Cloudflare DNS (Import Zone File)
+; Server IP: 45.207.201.35
+
+$ORIGIN trycode.run.
+$TTL 3600
+
+@       IN  SOA     ns1.cloudflare.com. dns.cloudflare.com. (
+                        2026011501  ; Serial (YYYYMMDDNN)
+                        3600        ; Refresh (1 hour)
+                        1800        ; Retry (30 min)
+                        1209600     ; Expire (2 weeks)
+                        3600 )      ; Minimum (1 hour)
+
+; Name servers (Cloudflare defaults)
+@       IN  NS      ns1.cloudflare.com.
+@       IN  NS      ns2.cloudflare.com.
+
+; ============================================================================
+; MAIN RECORDS
+; ============================================================================
+
+@       IN  A       45.207.201.35
+@       IN  AAAA    ::1
+
+www     IN  CNAME   @
+
+; ============================================================================
+; SERVICE SUBDOMAINS
+; ============================================================================
+
+api     IN  A       45.207.201.35
+admin   IN  A       45.207.201.35
+ws      IN  A       45.207.201.35
+s       IN  A       45.207.201.35
+assets  IN  A       45.207.201.35
+metrics IN  A       45.207.201.35
+logs    IN  A       45.207.201.35
+
+; ============================================================================
+; EMAIL SECURITY
+; ============================================================================
+
+@       IN  TXT     "v=spf1 ip4:45.207.201.35 ~all"
+_dmarc  IN  TXT     "v=DMARC1; p=quarantine; rua=mailto:dmarc@trycode.run; ruf=mailto:dmarc@trycode.run; fo=1"
+
+; DKIM (replace with actual key)
+; mail._domainkey IN TXT "v=DKIM1; k=rsa; p=YOUR_DKIM_PUBLIC_KEY"
+
+; ============================================================================
+; CAA RECORDS
+; ============================================================================
+
+@       IN  CAA     0 issue "letsencrypt.org"
+@       IN  CAA     0 issue "sectigo.com"
+@       IN  CAA     0 iodef "mailto:security@trycode.run"
+
+; ============================================================================
+; WILDCARD (optional)
+; ============================================================================
+
+; *     IN  A       45.207.201.35
+
+; ============================================================================
+; VERIFICATION (replace with actual codes)
+; ============================================================================
+
+; @       IN  TXT     "google-site-verification=YOUR_CODE"
+; @       IN  TXT     "msvalidate.01=YOUR_CODE"

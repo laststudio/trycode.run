@@ -1,0 +1,26 @@
+#!/bin/bash
+# Healthcheck service - waits for all services to be ready
+
+sleep 10
+
+while true; do
+    # Check Rust API
+    if ! wget -q --spider --timeout=2 http://127.0.0.1:3000/health; then
+        echo "Rust API health check failed"
+        exit 1
+    fi
+
+    # Check VictoriaMetrics
+    if ! wget -q --spider --timeout=2 http://127.0.0.1:8428/health; then
+        echo "VictoriaMetrics health check failed"
+        exit 1
+    fi
+
+    # Check VictoriaLogs
+    if ! wget -q --spider --timeout=2 http://127.0.0.1:9428/health; then
+        echo "VictoriaLogs health check failed"
+        exit 1
+    fi
+
+    sleep 30
+done

@@ -1,0 +1,15 @@
+[package]
+name = "trycode-ai"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trycode-core = { path = "../trycode-core" }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+futures = { workspace = true }
+async-channel = { workspace = true }

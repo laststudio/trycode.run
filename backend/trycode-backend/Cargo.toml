@@ -1,0 +1,40 @@
+[package]
+name = "trycode-backend"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "trycode-backend"
+path = "src/main.rs"
+
+[dependencies]
+trycode-core = { path = "../trycode-core" }
+trycode-auth = { path = "../trycode-auth" }
+trycode-execution = { path = "../trycode-execution" }
+trycode-collab = { path = "../trycode-collab" }
+trycode-projects = { path = "../trycode-projects" }
+trycode-admin = { path = "../trycode-admin" }
+trycode-ai = { path = "../trycode-ai" }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+sqlx = { workspace = true }
+deadpool-postgres = { workspace = true }
+deadpool-redis = { workspace = true }
+redis = { workspace = true }
+figment = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+governor = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }

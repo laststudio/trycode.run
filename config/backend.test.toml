@@ -1,0 +1,98 @@
+[server]
+host = "0.0.0.0"
+port = 3000
+workers = 2
+shutdown_timeout_secs = 10
+
+[database]
+host = "postgres"
+port = 5432
+name = "trycode_test"
+user = "trycode"
+password = "trycode"
+max_connections = 5
+min_connections = 1
+
+[redis]
+host = "redis"
+port = 6379
+password = ""
+db = 0
+max_connections = 10
+
+[smtp]
+host = "localhost"
+port = 1025
+username = ""
+password = ""
+from = "TryCode Test <test@trycode.run>"
+tls = "none"
+
+[captcha]
+provider = "trycap"
+site_key = "test-site-key"
+secret_key = "test-secret"
+verify_url = "http://localhost:8080/api/v1/verify"
+enabled = false
+actions = ["register", "login", "execute"]
+
+[oauth.github]
+enabled = false
+client_id = ""
+client_secret = ""
+redirect_url = "http://localhost:3000/api/auth/oauth/github/callback"
+scopes = ["read:user", "user:email"]
+allowed_domains = []
+auto_create_user = true
+default_role = "user"
+
+[ai]
+enabled = false
+base_url = "https://api.openai.com/v1"
+api_key = ""
+default_model = "gpt-4o-mini"
+max_tokens = 4096
+temperature = 0.3
+timeout_secs = 10
+
+[execution]
+worker_names = ["exec-worker-1", "exec-worker-2"]
+docker_host = "unix:///var/run/docker.sock"
+default_timeout_secs = 10
+max_timeout_secs = 30
+max_output_bytes = 1048576
+global_max_concurrent = 4
+per_user_max_concurrent = 2
+queue_timeout_secs = 10
+default_cpu_time_secs = 5
+default_memory_mb = 128
+default_disk_mb = 50
+default_wall_time_secs = 15
+container_cpu_quota = 50000
+container_memory_mb = 256
+container_pids_limit = 50
+wasm_timeout_ms = 2000
+wasm_preload = []
+wasm_fallback_triggers = ["timeout", "oom", "missing_runtime", "compile_error", "network_error"]
+
+[collab]
+persist_interval_secs = 5
+max_doc_size_bytes = 1048576
+awareness_ttl_secs = 60
+
+[sharing]
+token_length = 16
+default_expiry_days = 1
+max_expiry_days = 7
+
+[features]
+registration_enabled = true
+email_verification_required = false
+ai_enabled = false
+collab_enabled = true
+share_enabled = true
+exec_wasm_fallback = true
+exec_queue_enabled = true
+captcha_enabled = false
+oauth_enabled = false
+maintenance_mode = false

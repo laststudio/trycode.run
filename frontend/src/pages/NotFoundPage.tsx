@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { HomeIcon, SearchIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, SearchIcon, CodeBracketIcon } from '../utils/icons.ts';
 
 export function NotFoundPage() {
   return (

@@ -5,6 +5,9 @@ use tokio::sync::{mpsc, Mutex, RwLock};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
+use yrs::updates::decoder::Decode;
+use yrs::{ReadTxn, StateVector, Transact};
+
 use crate::models::{
     AwarenessMessage, AwarenessState, CollabDocument, CollabMessage, CollabMessageType,
     CollabSession, DocUpdateMessage, SyncMessage,
@@ -12,21 +15,23 @@ use crate::models::{
 use trycode_core::{CoreError, Result};
 
 pub struct YrsBroker {
-    documents: Arc<RwLock<HashMap<Uuid, DocumentState>>>,
+    documents: Arc<RwLock<HashMap<(Uuid, String), Arc<Mutex<DocumentState>>>>>,
     sessions: Arc<RwLock<HashMap<Uuid, SessionState>>>,
     db: sqlx::PgPool,
     persistence_interval: std::time::Duration,
 }
 
-struct DocumentState {
+pub struct DocumentState {
     doc: yrs::Doc,
-    awareness: yrs::Awareness,
+    awareness: yrs::sync::Awareness,
     sessions: HashMap<Uuid, SessionState>,
     last_persisted_version: i64,
     dirty: bool,
 }
 
+#[derive(Clone)]
 struct SessionState {
+    id: Uuid,
     user_id: Uuid,
     document_id: Uuid,
     awareness_state: AwarenessState,
@@ -53,22 +58,27 @@ impl YrsBroker {
         }
 
         // Load from database
-        let db_doc = sqlx::query_as!(
-            CollabDocument,
+        let db_doc = sqlx::query_as::<_, CollabDocument>(
             "SELECT * FROM collab_documents WHERE project_id = $1 AND file_path = $2",
-            project_id,
-            file_path
         )
+        .bind(project_id)
+        .bind(file_path.clone())
         .fetch_optional(&self.db)
         .await?;
 
         let doc = yrs::Doc::new();
-        let awareness = yrs::Awareness::new(doc.clone());
+        let awareness = yrs::sync::Awareness::new(doc.clone());
 
         if let Some(db_doc) = db_doc {
             if let Some(state_bytes) = db_doc.ydoc_state {
-                if let Err(e) = yrs::updates::decode_state(&doc, &state_bytes) {
-                    warn!("Failed to decode Yjs state for {}/{}: {}", project_id, file_path, e);
+                match yrs::Update::decode_v1(&state_bytes) {
+                    Ok(update) => {
+                        let mut txn = doc.transact_mut();
+                        txn.apply_update(update).ok();
+                    }
+                    Err(e) => {
+                        warn!("Failed to decode Yjs state for {}/{}: {}", project_id, file_path, e);
+                    }
                 }
             }
         }
@@ -117,10 +127,11 @@ impl YrsBroker {
                 if should_persist {
                     let state_bytes = {
                         let guard = state.lock().await;
-                        yrs::updates::encode_state(&guard.doc)
+                        let txn = guard.doc.transact();
+                        txn.encode_diff_v1(&StateVector::default())
                     };
 
-                    if let Err(e) = sqlx::query!(
+                    if let Err(e) = sqlx::query(
                         r#"
                         INSERT INTO collab_documents (project_id, file_path, ydoc_state, version, updated_at)
                         VALUES ($1, $2, $3, $4, NOW())
@@ -129,11 +140,11 @@ impl YrsBroker {
                             version = EXCLUDED.version,
                             updated_at = NOW()
                         "#,
-                        project_id,
-                        file_path,
-                        state_bytes,
-                        0 // version would need to be tracked
                     )
+                    .bind(project_id)
+                    .bind(&file_path)
+                    .bind(state_bytes)
+                    .bind(0i64) // version would need to be tracked
                     .execute(&db)
                     .await {
                         error!("Failed to persist collab document: {}", e);
@@ -166,18 +177,20 @@ impl YrsBroker {
 
         // Add to Yjs awareness
         {
-            let mut guard = doc_state.lock().await;
-            let awareness = guard.awareness.clone();
-            let mut local_awareness = awareness.lock();
-            local_awareness.set_local_state(serde_json::to_value(&awareness_state)?);
+            let guard = doc_state.lock().await;
+            guard
+                .awareness
+                .set_local_state(serde_json::to_value(&awareness_state)?)
+                .map_err(|e| CoreError::Internal(e.to_string()))?;
         }
 
         // Store session
         let session = SessionState {
+            id: session_id,
             user_id,
             document_id,
             awareness_state: awareness_state.clone(),
-            sender,
+            sender: sender.clone(),
             last_activity: Utc::now(),
         };
 
@@ -187,16 +200,16 @@ impl YrsBroker {
         }
 
         // Store in database
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO collab_sessions (id, document_id, user_id, awareness_state, joined_at, last_activity_at)
             VALUES ($1, $2, $3, $4, NOW(), NOW())
             "#,
-            session_id,
-            document_id,
-            user_id,
-            serde_json::to_value(&awareness_state)?
         )
+        .bind(session_id)
+        .bind(document_id)
+        .bind(user_id)
+        .bind(serde_json::to_value(&awareness_state)?)
         .execute(&self.db)
         .await?;
 
@@ -221,7 +234,7 @@ impl YrsBroker {
 
         // Send current document state
         let doc_state_guard = doc_state.lock().await;
-        let state_bytes = yrs::updates::encode_state(&doc_state_guard.doc);
+        let state_bytes = doc_state_guard.doc.transact().encode_diff_v1(&StateVector::default());
         drop(doc_state_guard);
 
         let _ = sender.send(CollabMessage {
@@ -246,15 +259,20 @@ impl YrsBroker {
 
         if let Some(session) = session {
             // Remove from Yjs awareness
-            if let Some(doc_state) = self.documents.read().await.get(&session.document_id) {
-                let mut guard = doc_state.lock().await;
-                let awareness = guard.awareness.clone();
-                let mut local_awareness = awareness.lock();
-                local_awareness.remove_user(session.user_id);
+            if let Some((_, doc_state)) = self
+                .documents
+                .read()
+                .await
+                .iter()
+                .find(|(key, _)| key.0 == session.document_id)
+            {
+                let guard = doc_state.lock().await;
+                guard.awareness.remove_state(session.user_id.as_u128() as u64);
             }
 
             // Update database
-            sqlx::query!("DELETE FROM collab_sessions WHERE id = $1", session_id)
+            sqlx::query("DELETE FROM collab_sessions WHERE id = $1")
+                .bind(session_id)
                 .execute(&self.db)
                 .await?;
 
@@ -312,8 +330,14 @@ impl YrsBroker {
         let doc_state = self.get_document_state(session.document_id).await?;
         
         {
+            let update = yrs::Update::decode_v1(&update_msg.update)
+                .map_err(|e| CoreError::Internal(e.to_string()))?;
             let mut guard = doc_state.lock().await;
-            yrs::updates::decode_update(&guard.doc, &update_msg.update)?;
+            {
+                let mut txn = guard.doc.transact_mut();
+                txn.apply_update(update)
+                    .map_err(|e| CoreError::Internal(e.to_string()))?;
+            }
             guard.dirty = true;
         }
 
@@ -333,16 +357,17 @@ impl YrsBroker {
         let doc_state = self.get_document_state(session.document_id).await?;
         
         {
-            let mut guard = doc_state.lock().await;
-            let awareness = guard.awareness.clone();
-            let mut local_awareness = awareness.lock();
-            local_awareness.set_local_state(serde_json::to_value(&awareness_state)?);
+            let guard = doc_state.lock().await;
+            guard
+                .awareness
+                .set_local_state(serde_json::to_value(&awareness_state)?)
+                .map_err(|e| CoreError::Internal(e.to_string()))?;
         }
 
         // Update session state
         {
             let mut sessions = self.sessions.write().await;
-            if let Some(s) = sessions.get_mut(&session_id) {
+            if let Some(s) = sessions.get_mut(&session.id) {
                 s.awareness_state = awareness_state.clone();
             }
         }
@@ -363,7 +388,8 @@ impl YrsBroker {
         let doc_state = self.get_document_state(session.document_id).await?;
         let state_bytes = {
             let guard = doc_state.lock().await;
-            yrs::updates::encode_state(&guard.doc)
+            let txn = guard.doc.transact();
+            txn.encode_diff_v1(&StateVector::default())
         };
 
         let _ = session.sender.send(CollabMessage {

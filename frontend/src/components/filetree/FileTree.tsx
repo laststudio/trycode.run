@@ -4,9 +4,8 @@ import {
   ChevronDownIcon,
   FileIcon,
   FolderIcon,
-  CodeIcon,
   DocumentTextIcon,
-} from '@heroicons/react/24/outline';
+} from '../../utils/icons';
 import { useEditorStore } from '../../stores';
 import { getFileIcon } from '../../utils/fileIcons';
 import clsx from 'clsx';
@@ -22,13 +21,11 @@ interface FileTreeProps {
 }
 
 export function FileTree({
-  projectId,
   onFileSelect,
   onFileCreate,
   onFolderCreate,
   onFileDelete,
   onFileRename,
-  onFileMove,
 }: FileTreeProps) {
   const { files, expandedFolders, toggleFolder, selectedFileId, setSelectedFileId } = useEditorStore();
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -54,12 +51,7 @@ export function FileTree({
     const isRenaming = renamingId === file.id;
 
     const Icon = getFileIcon(file.name, file.mime_type);
-    const folderIcon = isExpanded ? ChevronDownIcon : ChevronRightIcon;
-
-    const handleRenameStart = () => {
-      setRenamingId(file.id);
-      setRenameValue(file.name);
-    };
+    const FolderToggle = isExpanded ? ChevronDownIcon : ChevronRightIcon;
 
     const handleRenameConfirm = () => {
       if (renameValue.trim() && renameValue !== file.name) {
@@ -109,7 +101,7 @@ export function FileTree({
           }}
         >
           {hasChildren && (
-            <folderIcon
+            <FolderToggle
               className={clsx('w-4 h-4 text-muted-foreground flex-shrink-0', isExpanded && 'rotate-90')}
               onClick={(e) => {
                 e.stopPropagation();
@@ -140,8 +132,8 @@ export function FileTree({
         {file.is_directory && isExpanded && (
           <div className="mt-1">
             {fileMap.get(file.id)?.map(child => renderFileNode(child, depth + 1))}
-          )}
-        </div>
+          </div>
+        )}
       </div>
     );
   }, [expandedFolders, selectedFileId, renamingId, renameValue, fileMap, onFileSelect, toggleFolder, onFileRename]);
@@ -160,7 +152,7 @@ export function FileTree({
     const items = [
       { label: 'New File', action: () => onFileCreate(file.is_directory ? file.id : file.parent_id), icon: FileIcon },
       { label: 'New Folder', action: () => onFolderCreate(file.is_directory ? file.id : file.parent_id), icon: FolderIcon },
-      { label: 'Rename', action: handleRenameStart, icon: DocumentTextIcon },
+      { label: 'Rename', action: () => { setRenamingId(file.id); setRenameValue(file.name); }, icon: DocumentTextIcon },
       { label: 'Delete', action: () => onFileDelete(file.id), icon: null, danger: true },
     ];
 
@@ -200,7 +192,7 @@ export function FileTree({
       <div className="space-y-1">
         {rootFiles.map(file => renderFileNode(file))}
       </div>
-      
+
       {rootFiles.length === 0 && (
         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
           <FolderIcon className="w-12 h-12 mb-2 opacity-50" />
@@ -215,8 +207,4 @@ export function FileTree({
       )}
     </div>
   );
-}
-
-function showContextMenu(x: number, y: number, file: any, onFileCreate: Function, onFolderCreate: Function, onFileDelete: Function, onFileRename: Function) {
-  // This is a placeholder - the actual implementation is inline above
 }

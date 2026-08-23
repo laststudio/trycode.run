@@ -1,0 +1,206 @@
+
+src/api/admin.ts(128,3): error TS2322: Type 'unknown' is not assignable to type 'any[]'.
+src/api/admin.ts(138,3): error TS2322: Type 'unknown' is not assignable to type '{ success: boolean; message: string; }'.
+src/api/admin.ts(143,3): error TS2322: Type 'unknown' is not assignable to type '{ success: boolean; message: string; }'.
+src/api/admin.ts(148,3): error TS2322: Type 'unknown' is not assignable to type '{ success: boolean; message: string; auth_url?: string | undefined; }'.
+src/api/admin.ts(153,3): error TS2322: Type 'unknown' is not assignable to type '{ success: boolean; message: string; latency_ms: number; }'.
+src/components/ai/AiPanel.tsx(22,9): error TS6133: 'user' is declared but its value is never read.
+src/components/ai/AiPanel.tsx(211,16): error TS2304: Cannot find name 'Icon'.
+src/components/collab/CollabBar.tsx(1,1): error TS6133: 'clsx' is declared but its value is never read.
+src/components/collab/CollabBar.tsx(2,10): error TS6133: 'UserCircleIcon' is declared but its value is never read.
+src/components/collab/CollabBar.tsx(2,26): error TS6133: 'XMarkIcon' is declared but its value is never read.
+src/components/collab/CollabBar.tsx(2,37): error TS6133: 'ShareIcon' is declared but its value is never read.
+src/components/editor/languageConfigs/go.ts(357,44): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/go.ts(358,9): error TS6133: 'allKeywords' is declared but its value is never read.
+src/components/editor/languageConfigs/go.ts(359,9): error TS6133: 'allSnippets' is declared but its value is never read.
+src/components/editor/languageConfigs/python.ts(179,48): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/python.ts(250,43): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/python.ts(372,48): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/python.ts(409,51): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/python.ts(417,13): error TS2451: Cannot redeclare block-scoped variable 'signatures'.
+src/components/editor/languageConfigs/python.ts(447,9): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/editor/languageConfigs/python.ts(481,13): error TS2451: Cannot redeclare block-scoped variable 'signatures'.
+src/components/editor/languageConfigs/rust.ts(310,46): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/rust.ts(311,9): error TS6133: 'allKeywords' is declared but its value is never read.
+src/components/editor/languageConfigs/rust.ts(312,9): error TS6133: 'allSnippets' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(4,7): error TS6133: 'tsKeywords' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(19,7): error TS6133: 'tsBuiltinTypes' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(31,7): error TS6133: 'tsUtilityTypes' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(41,7): error TS6133: 'tsStandardKeywords' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(297,7): error TS6133: 'tsStdlib' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(355,52): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(356,9): error TS6133: 'allKeywords' is declared but its value is never read.
+src/components/editor/languageConfigs/typescript.ts(357,9): error TS6133: 'allSnippets' is declared but its value is never read.
+src/components/editor/LanguageSelector.tsx(2,38): error TS6133: 'MagnifyingGlassIcon' is declared but its value is never read.
+src/components/editor/LanguageSelector.tsx(3,21): error TS6133: 'getLanguageById' is declared but its value is never read.
+src/components/editor/LanguageServiceManager.ts(8,10): error TS6133: 'MonacoProviders' is declared but its value is never read.
+src/components/editor/LanguageServiceManager.ts(11,14): error TS2323: Cannot redeclare exported variable 'languageConfigs'.
+src/components/editor/LanguageServiceManager.ts(14,62): error TS2304: Cannot find name 'javascriptProviders'.
+src/components/editor/LanguageServiceManager.ts(32,14): error TS2323: Cannot redeclare exported variable 'LanguageServiceManager'.
+src/components/editor/LanguageServiceManager.ts(35,11): error TS6133: 'lspClients' is declared but its value is never read.
+src/components/editor/LanguageServiceManager.ts(45,11): error TS6133: 'lspClient' is declared but its value is never read.
+src/components/editor/LanguageServiceManager.ts(70,62): error TS2345: Argument of type 'IDisposable' is not assignable to parameter of type 'CompletionItemProvider'.
+src/components/editor/LanguageServiceManager.ts(119,34): error TS6133: 'method' is declared but its value is never read.
+src/components/editor/LanguageServiceManager.ts(119,50): error TS6133: 'params' is declared but its value is never read.
+src/components/editor/LanguageServiceManager.ts(199,63): error TS2339: Property 'dispose' does not exist on type 'CompletionItemProvider'.
+src/components/editor/LanguageServiceManager.ts(254,15): error TS2484: Export declaration conflicts with exported declaration of 'LanguageServiceState'.
+src/components/editor/LanguageServiceManager.ts(255,10): error TS2323: Cannot redeclare exported variable 'languageConfigs'.
+src/components/editor/LanguageServiceManager.ts(255,10): error TS2484: Export declaration conflicts with exported declaration of 'languageConfigs'.
+src/components/editor/LanguageServiceManager.ts(255,27): error TS2323: Cannot redeclare exported variable 'LanguageServiceManager'.
+src/components/editor/LanguageServiceManager.ts(255,27): error TS2484: Export declaration conflicts with exported declaration of 'LanguageServiceManager'.
+src/components/editor/LanguageServiceModeToggle.tsx(25,3): error TS6133: 'lspStatus' is declared but its value is never read.
+src/components/editor/MarkdownPreview.tsx(5,27): error TS7016: Could not find a declaration file for module 'remark-mermaid'. 'F:/opt/trycode/frontend/node_modules/remark-mermaid/src/index.js' implicitly has an 'any' type.
+src/components/editor/MarkdownPreviewPanel.tsx(5,27): error TS7016: Could not find a declaration file for module 'remark-mermaid'. 'F:/opt/trycode/frontend/node_modules/remark-mermaid/src/index.js' implicitly has an 'any' type.
+src/components/editor/MarkdownPreviewPanel.tsx(36,9): error TS6133: 'settings' is declared but its value is never read.
+src/components/editor/MarkdownPreviewPanel.tsx(40,10): error TS6133: 'scrollPosition' is declared but its value is never read.
+src/components/editor/Mermaid.tsx(24,17): error TS2339: Property 'initialize' does not exist on type 'typeof import("F:/opt/trycode/frontend/node_modules/mermaid/dist/mermaid")'.
+src/components/editor/Mermaid.tsx(33,17): error TS2339: Property 'render' does not exist on type 'typeof import("F:/opt/trycode/frontend/node_modules/mermaid/dist/mermaid")'.
+src/components/editor/Mermaid.tsx(33,42): error TS7031: Binding element 'svg' implicitly has an 'any' type.
+src/components/editor/MobileFileTree.tsx(1,33): error TS6133: 'useRef' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(4,3): error TS6133: 'ChevronDownIcon' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(8,3): error TS6133: 'FolderPlusIcon' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(9,3): error TS6133: 'Trash2Icon' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(10,3): error TS6133: 'PencilIcon' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(11,3): error TS6133: 'DownloadIcon' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(12,3): error TS6133: 'XMarkIcon' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(26,11): error TS6196: 'FileTreeItem' is declared but never used.
+src/components/editor/MobileFileTree.tsx(44,3): error TS6133: 'onFileMove' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(94,9): error TS6133: 'handleRenameStart' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(110,9): error TS6133: 'handleDelete' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(116,9): error TS6133: 'handleCreateFile' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(120,9): error TS6133: 'handleCreateFolder' is declared but its value is never read.
+src/components/editor/MobileFileTree.tsx(213,35): error TS7006: Parameter 'child' implicitly has an 'any' type.
+src/components/editor/MobileFileTree.tsx(222,31): error TS18047: 'event.target' is possibly 'null'.
+src/components/editor/MobileFileTree.tsx(222,44): error TS2339: Property 'closest' does not exist on type 'EventTarget'.
+src/components/editor/MobileLanguageSelector.tsx(3,21): error TS2724: '"../../utils/languages"' has no exported member named 'Language'. Did you mean 'LANGUAGES'?
+src/components/editor/MobileModeSelector.tsx(26,3): error TS6133: 'lspStatus' is declared but its value is never read.
+src/components/editor/MobileModeSelector.tsx(27,3): error TS6133: 'availableLanguages' is declared but its value is never read.
+src/components/editor/MobileTerminal.tsx(5,1): error TS6133: 'clsx' is declared but its value is never read.
+src/components/editor/MobileTerminal.tsx(8,3): error TS2300: Duplicate identifier 'height'.
+src/components/editor/MobileTerminal.tsx(12,3): error TS2300: Duplicate identifier 'height'.
+src/components/editor/MobileTerminal.tsx(19,3): error TS6133: 'onClose' is declared but its value is never read.
+src/components/editor/MobileTerminal.tsx(35,9): error TS2353: Object literal may only specify known properties, and 'selection' does not exist in type 'ITheme'.
+src/components/editor/MobileTerminal.tsx(56,7): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/editor/MobileTerminal.tsx(97,9): error TS6133: 'write' is declared but its value is never read.
+src/components/editor/MonacoEditor.tsx(5,1): error TS6133: 'LANGUAGES' is declared but its value is never read.
+src/components/editor/MonacoEditor.tsx(25,28): error TS2749: 'Editor' refers to a value, but is being used as a type here. Did you mean 'typeof Editor'?
+src/components/editor/MonacoEditor.tsx(33,5): error TS6133: 'setCollabUsers' is declared but its value is never read.
+src/components/editor/MonacoEditor.tsx(35,11): error TS6133: 'connect' is declared but its value is never read.
+src/components/editor/MonacoEditor.tsx(35,20): error TS6133: 'disconnect' is declared but its value is never read.
+src/components/editor/MonacoEditor.tsx(166,9): error TS2322: Type '((content: string) => void) | undefined' is not assignable to type 'OnChange | undefined'.
+src/components/editor/providers/monaco/BaseProviderFactory.ts(45,7): error TS2322: Type '(model: ITextModel, position: Position, token: CancellationToken, context: SignatureHelpContext) => Promise<{ ...; } | undefined>' is not assignable to type '(model: ITextModel, position: Position, token: CancellationToken, context: SignatureHelpContext) => ProviderResult<SignatureHelpResult>'.
+src/components/editor/providers/monaco/goProvider.ts(366,44): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/providers/monaco/pythonProvider.ts(180,14): error TS2300: Duplicate identifier 'PythonProviderFactory'.
+src/components/editor/providers/monaco/pythonProvider.ts(181,35): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/providers/monaco/pythonProvider.ts(246,30): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/providers/monaco/pythonProvider.ts(301,35): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/providers/monaco/pythonProvider.ts(335,38): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/providers/monaco/pythonProvider.ts(476,14): error TS2300: Duplicate identifier 'PythonProviderFactory'.
+src/components/editor/providers/monaco/pythonProvider.ts(477,15): error TS2304: Cannot find name 'createPythonCompletionProvider'.
+src/components/editor/providers/monaco/pythonProvider.ts(478,10): error TS2304: Cannot find name 'createPythonHoverProvider'.
+src/components/editor/providers/monaco/pythonProvider.ts(479,15): error TS2304: Cannot find name 'createPythonDefinitionProvider'.
+src/components/editor/providers/monaco/pythonProvider.ts(480,18): error TS2304: Cannot find name 'createPythonSignatureHelpProvider'.
+src/components/editor/providers/monaco/rustProvider.ts(298,46): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/providers/monaco/typescriptProvider.ts(316,45): error TS6133: 'monacoInstance' is declared but its value is never read.
+src/components/editor/SnippetSidebar.tsx(14,1): error TS6133: 'useEditorStore' is declared but its value is never read.
+src/components/editor/SnippetSidebar.tsx(233,3): error TS2304: Cannot find name 'useEffect'.
+src/components/editor/SnippetSidebar.tsx(249,3): error TS2304: Cannot find name 'useEffect'.
+src/components/editor/SnippetSidebar.tsx(418,24): error TS2322: Type 'string | SnippetFolder' is not assignable to type 'SnippetFolder'.
+src/components/editor/SnippetSidebar.tsx(418,58): error TS2322: Type 'string' is not assignable to type 'SnippetFolder'.
+src/components/editor/SnippetSidebar.tsx(457,63): error TS2345: Argument of type 'SnippetFolder' is not assignable to parameter of type 'string'.
+src/components/editor/SnippetSidebar.tsx(461,59): error TS2345: Argument of type 'SnippetFolder' is not assignable to parameter of type 'string'.
+src/components/editor/SnippetSidebar.tsx(470,53): error TS2367: This comparison appears to be unintentional because the types 'SnippetFolder' and 'string' have no overlap.
+src/components/editor/SnippetSidebar.tsx(557,34): error TS7006: Parameter 'snippet' implicitly has an 'any' type.
+src/components/editor/SnippetSidebar.tsx(561,33): error TS7006: Parameter 'folder' implicitly has an 'any' type.
+src/components/filetree/FileTree.tsx(7,3): error TS6133: 'CodeIcon' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(25,3): error TS6133: 'projectId' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(31,3): error TS6133: 'onFileMove' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(59,11): error TS6133: 'handleRenameStart' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(163,34): error TS2304: Cannot find name 'handleRenameStart'.
+src/components/filetree/FileTree.tsx(175,26): error TS2533: Object is possibly 'null' or 'undefined'.
+src/components/filetree/FileTree.tsx(220,10): error TS6133: 'showContextMenu' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,26): error TS6133: 'x' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,37): error TS6133: 'y' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,48): error TS6133: 'file' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,59): error TS6133: 'onFileCreate' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,83): error TS6133: 'onFolderCreate' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,109): error TS6133: 'onFileDelete' is declared but its value is never read.
+src/components/filetree/FileTree.tsx(220,133): error TS6133: 'onFileRename' is declared but its value is never read.
+src/components/layout/Layout.tsx(23,9): error TS6198: All destructured elements are unused.
+src/components/terminal/Terminal.tsx(18,28): error TS6133: 'appendExecutionOutput' is declared but its value is never read.
+src/components/terminal/Terminal.tsx(30,9): error TS2353: Object literal may only specify known properties, and 'selection' does not exist in type 'ITheme'.
+src/components/terminal/Terminal.tsx(51,7): error TS1117: An object literal cannot have multiple properties with the same name.
+src/components/terminal/Terminal.tsx(107,9): error TS6133: 'write' is declared but its value is never read.
+src/entry-server.tsx(13,16): error TS6133: 'manifest' is declared but its value is never read.
+src/entry-server.tsx(28,13): error TS2322: Type '(chunk: string) => void' is not assignable to type '{ (buffer: string | Uint8Array<ArrayBufferLike>, cb?: ((err?: Error | null | undefined) => void) | undefined): boolean; (str: string, encoding?: BufferEncoding | undefined, cb?: ((err?: Error | ... 1 more ... | undefined) => void) | undefined): boolean; }'.
+src/entry-server.tsx(29,13): error TS2322: Type '() => void' is not assignable to type '{ (cb?: (() => void) | undefined): WritableStream; (data: string | Uint8Array<ArrayBufferLike>, cb?: (() => void) | undefined): WritableStream; (str: string, encoding?: BufferEncoding | undefined, cb?: (() => void) | undefined): WritableStream; }'.
+src/hooks/useCollab.ts(1,10): error TS6133: 'useEffect' is declared but its value is never read.
+src/hooks/useCollab.ts(6,1): error TS6133: 'uuidv4' is declared but its value is never read.
+src/hooks/useCollab.ts(27,9): error TS6133: 'setCollabUsers' is declared but its value is never read.
+src/hooks/useCollab.ts(70,13): error TS6133: 'states' is declared but its value is never read.
+src/hooks/usePWA.ts(41,11): error TS2451: Cannot redeclare block-scoped variable 'isInstalled'.
+src/hooks/usePWA.ts(49,11): error TS2451: Cannot redeclare block-scoped variable 'handleBeforeInstallPrompt'.
+src/hooks/usePWA.ts(62,11): error TS2451: Cannot redeclare block-scoped variable 'handleAppInstalled'.
+src/hooks/usePWA.ts(100,11): error TS2451: Cannot redeclare block-scoped variable 'isInstalled'.
+src/hooks/usePWA.ts(104,11): error TS2451: Cannot redeclare block-scoped variable 'handleBeforeInstallPrompt'.
+src/hooks/usePWA.ts(116,11): error TS2451: Cannot redeclare block-scoped variable 'handleAppInstalled'.
+src/hooks/usePWA.ts(206,11): error TS6133: 'cacheNames' is declared but its value is never read.
+src/hooks/usePWA.ts(272,10): error TS6133: 'checkInstalled' is declared but its value is never read.
+src/hooks/usePWA.ts(367,25): error TS6133: 'setIsInstallable' is declared but its value is never read.
+src/hooks/useSnippetLibrary.ts(197,21): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(218,40): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(221,36): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(280,54): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(307,53): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(377,33): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(383,36): error TS7006: Parameter 'childId' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(387,32): error TS7006: Parameter 'childId' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(395,47): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(402,54): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(423,14): error TS2345: Argument of type '(prev: { snippets: Map<string, unknown>; folders: Map<string, unknown>; rootFolderIds: any; searchQuery: string; selectedFolderId: undefined; editingSnippetId: undefined; editingFolderId: undefined; } | { ...; }) => { ...; } | { ...; }' is not assignable to parameter of type 'SetStateAction<{ snippets: Map<string, unknown>; folders: Map<string, unknown>; rootFolderIds: any; searchQuery: string; selectedFolderId: undefined; editingSnippetId: undefined; editingFolderId: undefined; } | { ...; }>'.
+src/hooks/useSnippetLibrary.ts(431,14): error TS2345: Argument of type '(prev: { snippets: Map<string, unknown>; folders: Map<string, unknown>; rootFolderIds: any; searchQuery: string; selectedFolderId: undefined; editingSnippetId: undefined; editingFolderId: undefined; } | { ...; }) => { ...; } | { ...; }' is not assignable to parameter of type 'SetStateAction<{ snippets: Map<string, unknown>; folders: Map<string, unknown>; rootFolderIds: any; searchQuery: string; selectedFolderId: undefined; editingSnippetId: undefined; editingFolderId: undefined; } | { ...; }>'.
+src/hooks/useSnippetLibrary.ts(477,34): error TS7006: Parameter 'snippet' implicitly has an 'any' type.
+src/hooks/useSnippetLibrary.ts(481,33): error TS7006: Parameter 'folder' implicitly has an 'any' type.
+src/pages/admin/AdminPage.tsx(11,3): error TS6133: 'StopIcon' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(12,3): error TS6133: 'MagnifyingGlassIcon' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(13,3): error TS6133: 'FunnelIcon' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(14,3): error TS6133: 'ChevronDownIcon' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(17,1): error TS6192: All imports in import declaration are unused.
+src/pages/admin/AdminPage.tsx(17,10): error TS2724: '"../../api/admin"' has no exported member named 'AdminState'. Did you mean 'AdminStats'?
+src/pages/admin/AdminPage.tsx(20,11): error TS6196: 'AdminPageProps' is declared but never used.
+src/pages/admin/AdminPage.tsx(23,9): error TS6133: 'user' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(60,20): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/admin/AdminPage.tsx(64,22): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/admin/AdminPage.tsx(66,22): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/admin/AdminPage.tsx(391,12): error TS2367: This comparison appears to be unintentional because the types '"users" | "config" | "tests" | "overview" | "executions" | "audit"' and '"ssr"' have no overlap.
+src/pages/admin/AdminPage.tsx(395,42): error TS2552: Cannot find name 'triggerConfigReload'. Did you mean 'trigger_config_reload'?
+src/pages/auth/ForgotPasswordPage.tsx(6,1): error TS6133: 'clsx' is declared but its value is never read.
+src/pages/auth/ForgotPasswordPage.tsx(96,16): error TS2304: Cannot find name 'CheckCircleIcon'.
+src/pages/auth/LoginPage.tsx(3,63): error TS6133: 'UserIcon' is declared but its value is never read.
+src/pages/auth/LoginPage.tsx(7,1): error TS6133: 'clsx' is declared but its value is never read.
+src/pages/auth/RegisterPage.tsx(7,1): error TS6133: 'clsx' is declared but its value is never read.
+src/pages/auth/ResetPasswordPage.tsx(6,1): error TS6133: 'clsx' is declared but its value is never read.
+src/pages/auth/VerifyEmailPage.tsx(3,10): error TS6133: 'CheckCircleIcon' is declared but its value is never read.
+src/pages/auth/VerifyEmailPage.tsx(6,1): error TS6133: 'clsx' is declared but its value is never read.
+src/pages/auth/VerifyEmailPage.tsx(18,24): error TS6133: 'setCaptchaToken' is declared but its value is never read.
+src/pages/auth/VerifyEmailPage.tsx(83,60): error TS2339: Property 'value' does not exist on type 'EventTarget'.
+src/pages/auth/VerifyEmailPage.tsx(89,19): error TS17001: JSX elements cannot have multiple attributes with the same name.
+src/pages/EditorPage.tsx(98,17): error TS6133: 'files' is declared but its value is never read.
+src/pages/EditorPage.tsx(146,9): error TS6133: 'handleStop' is declared but its value is never read.
+src/pages/SettingsPage.tsx(3,55): error TS6133: 'KeyIcon' is declared but its value is never read.
+src/pages/SettingsPage.tsx(3,64): error TS6133: 'ArrowRightIcon' is declared but its value is never read.
+src/pages/SettingsPage.tsx(10,9): error TS6133: 'navigate' is declared but its value is never read.
+src/pages/SettingsPage.tsx(12,21): error TS2339: Property 'theme' does not exist on type 'UIState'.
+src/pages/SettingsPage.tsx(12,28): error TS2339: Property 'setTheme' does not exist on type 'UIState'.
+src/pages/SharePage.tsx(3,10): error TS6133: 'CheckCircleIcon' is declared but its value is never read.
+src/pages/SharePage.tsx(3,56): error TS6133: 'EyeIcon' is declared but its value is never read.
+src/pages/SharePage.tsx(3,65): error TS6133: 'EyeSlashIcon' is declared but its value is never read.
+src/pages/SharePage.tsx(3,79): error TS6133: 'ArrowRightIcon' is declared but its value is never read.
+src/pages/SharePage.tsx(7,1): error TS6133: 'TerminalComponent' is declared but its value is never read.
+src/pages/SharePage.tsx(15,9): error TS6133: 'user' is declared but its value is never read.
+src/pages/SharePage.tsx(22,10): error TS6133: 'showPassword' is declared but its value is never read.
+src/pages/SharePage.tsx(22,24): error TS6133: 'setShowPassword' is declared but its value is never read.
+src/pages/SharePage.tsx(29,10): error TS6133: 'fallbackReason' is declared but its value is never read.
+src/pages/SharePage.tsx(169,9): error TS6133: 'lang' is declared but its value is never read.
+src/pages/SharePage.tsx(204,14): error TS2304: Cannot find name 'LanguageSelector'.
+

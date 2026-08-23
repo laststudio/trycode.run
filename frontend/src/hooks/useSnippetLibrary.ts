@@ -1,19 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { 
-  SearchIcon, 
-  PlusIcon, 
-  Trash2Icon, 
-  Edit2Icon, 
-  CopyIcon,
-  ChevronDownIcon,
-  FolderIcon,
-  FileCodeIcon,
-  TagIcon,
-  ChevronRightIcon,
-} from '@heroicons/react/24/outline';
-import clsx from 'clsx';
 
-interface CodeSnippet {
+export interface CodeSnippet {
   id: string;
   title: string;
   description: string;
@@ -26,7 +13,7 @@ interface CodeSnippet {
   usageCount: number;
 }
 
-interface SnippetFolder {
+export interface SnippetFolder {
   id: string;
   name: string;
   parentId?: string;
@@ -36,7 +23,7 @@ interface SnippetFolder {
   createdAt: number;
 }
 
-interface SnippetLibraryState {
+export interface SnippetLibraryState {
   snippets: Map<string, CodeSnippet>;
   folders: Map<string, SnippetFolder>;
   rootFolderIds: string[];
@@ -46,14 +33,14 @@ interface SnippetLibraryState {
   editingFolderId?: string;
 }
 
-const DEFAULT_FOLDERS = [
+export const DEFAULT_FOLDERS = [
   { id: 'general', name: '通用', children: [], snippetIds: [], expanded: true, createdAt: Date.now() },
   { id: 'algorithms', name: '算法', children: [], snippetIds: [], expanded: true, createdAt: Date.now() },
   { id: 'patterns', name: '设计模式', children: [], snippetIds: [], expanded: true, createdAt: Date.now() },
   { id: 'utils', name: '实用工具', children: [], snippetIds: [], expanded: true, createdAt: Date.now() },
 ];
 
-const BUILTIN_SNIPPETS = [
+export const BUILTIN_SNIPPETS = [
   {
     id: 'py-main',
     title: 'Python 主函数模板',
@@ -127,449 +114,6 @@ const BUILTIN_SNIPPETS = [
     usageCount: 0,
   },
 ];
-
-export interface CodeSnippet {
-  id: string;
-  title: string;
-  description: string;
-  language: string;
-  code: string;
-  tags: string[];
-  folderId?: string;
-  createdAt: number;
-  updatedAt: number;
-  usageCount: number;
-}
-
-export interface SnippetFolder {
-  id: string;
-  name: string;
-  parentId?: string;
-  children?: SnippetFolder[];
-  snippetIds: string[];
-  expanded: boolean;
-  createdAt: number;
-}
-
-interface SnippetLibraryState {
-  snippets: Map<string, any>;
-  folders: Map<string, any>;
-  rootFolderIds: string[];
-  searchQuery: string;
-  selectedFolderId?: string;
-  editingSnippetId?: string;
-  editingFolderId?: string;
-}
-
-const BUILTIN_SNIPPETS = [
-  // ... 这里简化，实际包含上面定义的片段
-];
-
-export function useSnippetLibrary() {
-  const [state, setState] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('snippet-library');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return {
-            snippets: new Map(Object.entries(parsed.snippets || {})),
-            folders: new Map(Object.entries(parsed.folders || {})),
-            rootFolderIds: parsed.rootFolderIds || ['general', 'algorithms', 'patterns', 'utils'],
-            searchQuery: '',
-            selectedFolderId: undefined,
-            editingSnippetId: undefined,
-            editingFolderId: undefined,
-          };
-        }
-      } catch (e) {
-        console.warn('Failed to load snippet library:', e);
-      }
-    }
-    return {
-      snippets: new Map(),
-      folders: new Map(),
-      rootFolderIds: ['general', 'algorithms', 'patterns', 'utils'],
-      searchQuery: '',
-      selectedFolderId: undefined,
-      editingSnippetId: undefined,
-      editingFolderId: undefined,
-    };
-  });
-
-  const persistState = useCallback((newState: any) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('snippet-library', JSON.stringify({
-          snippets: Object.fromEntries(newState.snippets),
-          folders: Object.fromEntries(newState.folders),
-          rootFolderIds: newState.rootFolderIds,
-        }));
-      } catch (e) {
-        console.warn('Failed to persist snippet library:', e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const existingSnippets = Array.from(state.snippets.keys());
-    if (existingSnippets.length === 0) {
-      // 初始化内置片段
-      // 实际实现中会有完整的 BUILTIN_SNIPPETS
-    }
-  }, []);
-
-  useEffect(() => {
-    persistState(state);
-  }, [state]);
-
-  const persistState = useCallback((newState: any) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('snippet-library', JSON.stringify({
-          snippets: Object.fromEntries(newState.snippets),
-          folders: Object.fromEntries(newState.folders),
-          rootFolderIds: newState.rootFolderIds,
-        }));
-      } catch (e) {
-        console.warn('Failed to persist snippet library:', e);
-      }
-    }
-  }, []);
-
-  const filteredSnippets = useMemo(() => {
-    let snippets = Array.from(state.snippets.values());
-    
-    if (state.searchQuery) {
-      const query = state.searchQuery.toLowerCase();
-      snippets = snippets.filter(s => 
-        s.title.toLowerCase().includes(query) ||
-        s.description.toLowerCase().includes(query) ||
-        s.code.toLowerCase().includes(query) ||
-        s.tags.some(t => t.toLowerCase().includes(query)) ||
-        s.language.toLowerCase().includes(query)
-      );
-    }
-    
-    if (state.selectedFolderId) {
-      const folder = state.folders.get(state.selectedFolderId);
-      if (folder) {
-        snippets = snippets.filter(s => folder.snippetIds.includes(s.id));
-      }
-    }
-    
-    return snippets.sort((a, b) => b.usageCount - a.usageCount || b.updatedAt - a.updatedAt);
-  }, [state.snippets, state.folders, state.searchQuery, state.selectedFolderId]);
-
-  const folderTree = useMemo(() => {
-    const buildTree = (folderId: string) => {
-      const folder = state.folders.get(folderId);
-      if (!folder) return null;
-      return {
-        ...folder,
-        children: folder.children?.map(c => buildTree(c.id)) || [],
-      };
-    };
-    return state.rootFolderIds.map(id => buildTree(id)).filter(Boolean);
-  }, [state.folders]);
-
-  const createSnippet = useCallback((snippet: any) => {
-    const newSnippet = {
-      ...snippet,
-      id: `snippet-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      usageCount: 0,
-    };
-    setState(prev => {
-      const newSnippets = new Map(prev.snippets);
-      newSnippets.set(newSnippet.id, newSnippet);
-      
-      if (snippet.folderId) {
-        const folder = new Map(prev.folders);
-        const folderData = folder.get(snippet.folderId!);
-        if (folderData) {
-          folder.set(snippet.folderId!, {
-            ...folderData,
-            snippetIds: [...folderData.snippetIds, newSnippet.id],
-          });
-          return { ...prev, snippets: newSnippets, folders: folder };
-        }
-      }
-      return { ...prev, snippets: newSnippets };
-    });
-  }, []);
-
-  const updateSnippet = useCallback((id: string, updates: any) => {
-    setState(prev => {
-      const snippet = prev.snippets.get(id);
-      if (!snippet) return prev;
-      
-      const newSnippets = new Map(prev.snippets);
-      newSnippets.set(id, {
-        ...snippet,
-        ...updates,
-        updatedAt: Date.now(),
-      });
-      return { ...prev, snippets: newSnippets };
-    });
-  }, []);
-
-  const deleteSnippet = useCallback((id: string) => {
-    setState(prev => {
-      const snippet = prev.snippets.get(id);
-      if (!snippet) return prev;
-      
-      const newSnippets = new Map(prev.snippets);
-      newSnippets.delete(id);
-      
-      if (snippet.folderId) {
-        const folder = new Map(prev.folders);
-        const folderData = folder.get(snippet.folderId!);
-        if (folderData) {
-          folder.set(snippet.folderId!, {
-            ...folderData,
-            snippetIds: folderData.snippetIds.filter(id => id !== snippet.id),
-          });
-          return { ...prev, snippets: newSnippets, folders: folder };
-        }
-      }
-      return { ...prev, snippets: newSnippets };
-    });
-  }, []);
-
-  const moveSnippet = useCallback((snippetId: string, targetFolderId: string) => {
-    setState(prev => {
-      const snippet = prev.snippets.get(snippetId);
-      if (!snippet) return prev;
-      
-      const newSnippets = new Map(prev.snippets);
-      newSnippets.set(snippetId, {
-        ...snippet,
-        folderId: targetFolderId,
-        updatedAt: Date.now(),
-      });
-      
-      const newFolders = new Map(prev.folders);
-      if (snippet.folderId) {
-        const oldFolder = newFolders.get(snippet.folderId!);
-        if (oldFolder) {
-          newFolders.set(snippet.folderId!, {
-            ...oldFolder,
-            snippetIds: oldFolder.snippetIds.filter(id => id !== snippetId),
-          });
-        }
-        
-        const newFolder = newFolders.get(targetFolderId);
-        if (newFolder) {
-          newFolders.set(targetFolderId, {
-            ...newFolder,
-            snippetIds: [...newFolder.snippetIds, snippetId],
-          });
-        }
-        
-        return { ...prev, snippets: newSnippets, folders: newFolders };
-      });
-  }, []);
-
-  const createFolder = useCallback((name: string, parentId?: string) => {
-    const newFolder = {
-      id: `folder-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      name,
-      parentId,
-      children: [],
-      snippetIds: [],
-      expanded: true,
-      createdAt: Date.now(),
-    };
-    
-    setState(prev => {
-      const newFolders = new Map(prev.folders);
-      newFolders.set(newFolder.id, newFolder);
-      
-      if (parentId) {
-        const parentFolder = newFolders.get(parentId);
-        if (parentFolder) {
-          newFolders.set(parentId, {
-            ...parentFolder,
-            children: [...(parentFolder.children || []), newFolder.id],
-          });
-        }
-      } else {
-        return {
-          ...prev,
-          folders: newFolders,
-          rootFolderIds: [...prev.rootFolderIds, newFolder.id],
-        };
-      }
-      return { ...prev, folders: newFolders };
-    });
-  }, []);
-
-  const updateFolder = useCallback((id: string, updates: any) => {
-    setState(prev => {
-      const folder = prev.folders.get(id);
-      if (!folder) return prev;
-      
-      const newFolders = new Map(prev.folders);
-      newFolders.set(id, { ...folder, ...updates });
-      return { ...prev, folders: newFolders };
-    });
-  }, []);
-
-  const deleteFolder = useCallback((id: string) => {
-    setState(prev => {
-      const folder = prev.folders.get(id);
-      if (!folder) return prev;
-      
-      const newSnippets = new Map(prev.snippets);
-      folder.snippetIds.forEach(id => newSnippets.delete(id));
-      
-      const newFolders = new Map(prev.folders);
-      const deleteRecursive = (folderId: string) => {
-        const folder = newFolders.get(folderId);
-        if (folder) {
-          folder.children?.forEach(childId => deleteRecursive(childId));
-          newFolders.delete(folderId);
-        }
-      };
-      folder.children?.forEach(childId => deleteRecursive(childId));
-      newFolders.delete(id);
-      
-      if (folder.parentId) {
-        const parent = newFolders.get(folder.parentId);
-        if (parent) {
-          newFolders.set(folder.parentId, {
-            ...parent,
-            children: parent.children?.filter(id => id !== folder.id) || [],
-          });
-        } else {
-          return {
-            ...prev,
-            snippets: newSnippets,
-            folders: newFolders,
-            rootFolderIds: prev.rootFolderIds.filter(id => id !== id),
-          };
-        }
-        
-        return { ...prev, snippets: newSnippets, folders: newFolders };
-      });
-  }, []);
-
-  const toggleFolder = useCallback((id: string) => {
-    setState(prev => {
-      const folder = prev.folders.get(id);
-      if (!folder) return prev;
-      
-      const newFolders = new Map(prev.folders);
-      newFolders.set(id, { ...folder, expanded: !folder.expanded });
-      return { ...prev, folders: newFolders };
-    });
-  }, []);
-
-  const selectFolder = useCallback((id: string | undefined) => {
-    setState(prev => ({ ...prev, selectedFolderId: id }));
-  }, []);
-
-  const searchSnippets = useCallback((query: string) => {
-    setState(prev => ({ ...prev, searchQuery: query }));
-  }, []);
-
-  const startEditingSnippet = useCallback((id: string) => {
-    setState(prev => ({ ...prev, editingSnippetId: id }));
-  }, []);
-
-  const stopEditingSnippet = useCallback(() => {
-    setState(prev => ({ ...prev, editingSnippetId: undefined }));
-  }, []);
-
-  const insertSnippet = useCallback((snippetId: string) => {
-    const snippet = state.snippets.get(snippetId);
-    if (!snippet) return;
-    
-    setState(prev => {
-      const snippet = prev.snippets.get(snippetId);
-      if (!snippet) return prev;
-      const newSnippets = new Map(prev.snippets);
-      newSnippets.set(snippetId, {
-        ...snippet,
-        usageCount: snippet.usageCount + 1,
-        updatedAt: Date.now(),
-      });
-      return { ...prev, snippets: newSnippets };
-    });
-  }, [state.snippets]);
-
-  const exportSnippets = useCallback(() => {
-    const data = {
-      snippets: Array.from(state.snippets.values()),
-      folders: Array.from(state.folders.values()),
-      rootFolderIds: state.rootFolderIds,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `snippets-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [state.snippets, state.folders, state.rootFolderIds]);
-
-  const importSnippets = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        setState(prev => {
-          const newSnippets = new Map(prev.snippets);
-          data.snippets?.forEach(snippet => {
-            newSnippets.set(snippet.id, snippet);
-          });
-          const newFolders = new Map(prev.folders);
-          data.folders?.forEach(folder => {
-            newFolders.set(folder.id, folder);
-          }
-          return {
-            ...prev,
-            snippets: newSnippets,
-            folders: newFolders,
-            rootFolderIds: data.rootFolderIds || prev.rootFolderIds,
-          };
-        });
-      } catch (e) {
-        console.error('Failed to import snippets:', e);
-      }
-    };
-    reader.readAsText(file);
-  }, []);
-
-  return {
-    snippets: state.snippets,
-    folders: state.folders,
-    rootFolderIds: state.rootFolderIds,
-    searchQuery: state.searchQuery,
-    selectedFolderId: state.selectedFolderId,
-    editingSnippetId: state.editingSnippetId,
-    editingFolderId: state.editingFolderId,
-    filteredSnippets,
-    folderTree,
-    createSnippet,
-    updateSnippet,
-    deleteSnippet,
-    moveSnippet,
-    createFolder,
-    updateFolder,
-    deleteFolder,
-    toggleFolder,
-    selectFolder,
-    searchSnippets,
-    startEditingSnippet,
-    stopEditingSnippet,
-    insertSnippet,
-    exportSnippets,
-    importSnippets,
-  };
-}
 
 export function useSnippetLibrary() {
   const [state, setState] = useState(() => {
@@ -773,7 +317,10 @@ export function useSnippetLibrary() {
         }
         
         return { ...prev, snippets: newSnippets, folders: newFolders };
-      });
+      }
+      
+      return { ...prev, snippets: newSnippets };
+    });
   }, []);
 
   const createFolder = useCallback((name: string, parentId?: string) => {
@@ -855,9 +402,10 @@ export function useSnippetLibrary() {
             rootFolderIds: prev.rootFolderIds.filter(id => id !== id),
           };
         }
-        
-        return { ...prev, snippets: newSnippets, folders: newFolders };
-      });
+      }
+      
+      return { ...prev, snippets: newSnippets, folders: newFolders };
+    });
   }, []);
 
   const toggleFolder = useCallback((id: string) => {
@@ -932,7 +480,7 @@ export function useSnippetLibrary() {
           const newFolders = new Map(prev.folders);
           data.folders?.forEach(folder => {
             newFolders.set(folder.id, folder);
-          }
+          });
           return {
             ...prev,
             snippets: newSnippets,

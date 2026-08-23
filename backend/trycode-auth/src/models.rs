@@ -30,6 +30,16 @@ pub enum UserRole {
     SuperAdmin,
 }
 
+impl std::fmt::Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::User => write!(f, "user"),
+            UserRole::Admin => write!(f, "admin"),
+            UserRole::SuperAdmin => write!(f, "super_admin"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "user_status", rename_all = "snake_case")]
 pub enum UserStatus {
@@ -45,7 +55,7 @@ pub struct Session {
     pub user_id: Uuid,
     pub token_hash: String,
     pub expires_at: DateTime<Utc>,
-    pub ip_address: Option<std::net::IpAddr>,
+    pub ip_address: Option<String>,
     pub user_agent: Option<String>,
     pub created_at: DateTime<Utc>,
 }
@@ -127,7 +137,7 @@ pub struct VerifyEmailRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RefreshTokenRequest {
-    pub refresh_token: String,
+    pub refresh_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

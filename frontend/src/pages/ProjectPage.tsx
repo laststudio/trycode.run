@@ -1,37 +1,32 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeftIcon, 
-  PlusIcon, 
-  FolderPlusIcon, 
-  ShareIcon,
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import {
+  ArrowLeftIcon,
+  PlusIcon,
+  FolderPlusIcon,
   Cog6ToothIcon,
   ChevronDownIcon,
-  TrashIcon,
-  PencilIcon,
-  DownloadIcon,
-} from '@heroicons/react/24/outline';
-import { useAuth } from '../../hooks/useAuth';
-import { useEditorStore } from '../../stores';
-import { FileTree } from '../../components/filetree/FileTree';
-import { MonacoEditor } from '../../components/editor/MonacoEditor';
-import { TerminalComponent } from '../../components/terminal/Terminal';
-import { CollabBar } from '../../components/collab/CollabBar';
-import { executeCode } from '../../utils/api';
-import { LANGUAGES, getLanguageById } from '../../utils/languages';
+  XMarkIcon,
+  PlayIcon,
+} from '../utils/icons';
+import { useEditorStore, useUIStore } from '../stores';
+import { FileTree } from '../components/filetree/FileTree';
+import { MonacoEditor } from '../components/editor/MonacoEditor';
+import { TerminalComponent } from '../components/terminal/Terminal';
+import { executeCode } from '../utils/api';
+import { getLanguageById } from '../utils/languages';
 import clsx from 'clsx';
 
 export function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { addToast } = useUIStore();
-  
-  const { 
-    currentProject, 
+
+  const {
+    currentProject,
     setCurrentProject,
-    files, 
-    selectedFileId, 
+    files,
+    selectedFileId,
     setSelectedFileId,
     activeTabId,
     setActiveTabId,
@@ -39,19 +34,8 @@ export function ProjectPage() {
     addTab,
     closeTab,
     currentLanguage,
-    setCurrentLanguage,
     fileContents,
     setFileContent,
-    markSaved,
-    sidebarWidth,
-    setSidebarWidth,
-    terminalHeight,
-    setTerminalHeight,
-    showTerminal,
-    setShowTerminal,
-    showOutput,
-    setShowOutput,
-    collabUsers,
   } = useEditorStore();
   
   const [loading, setLoading] = useState(true);
@@ -127,7 +111,7 @@ export function ProjectPage() {
   };
 
   const handleTabClose = (fileId: string) => {
-    // Implementation
+    closeTab(fileId);
   };
 
   if (loading) {
@@ -172,6 +156,15 @@ export function ProjectPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleRun}
+            disabled={executing}
+            className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
+            title="Run"
+          >
+            <PlayIcon className="w-4 h-4" />
+            {executing ? 'Running…' : 'Run'}
+          </button>
           <Link to={`/projects/${projectId}/settings`} className="p-1.5 hover:bg-accent rounded-lg" title="Settings">
             <Cog6ToothIcon className="w-5 h-5" />
           </Link>
@@ -192,7 +185,7 @@ export function ProjectPage() {
             </div>
           </div>
           <FileTree
-            projectId={projectId}
+            projectId={projectId ?? ''}
             onFileSelect={handleFileSelect}
             onFileCreate={() => {}}
             onFolderCreate={() => {}}
@@ -223,8 +216,7 @@ export function ProjectPage() {
                     <span className="truncate max-w-[150px]">{file.name}</span>
                     <button onClick={(e) => { e.stopPropagation(); handleTabClose(tabId); }} className="ml-1 p-0.5 hover:bg-destructive/10 text-destructive rounded opacity-0 group-hover:opacity-100">
                       <XMarkIcon className="w-3 h-3" />
-                    </button>
-                  </button>
+                    </button>                  </button>
                 );
               })}
               <button className="p-2 hover:bg-accent rounded-l-lg" title="New File">
@@ -238,7 +230,7 @@ export function ProjectPage() {
               <MonacoEditor
                 fileId={selectedFileId}
                 language={currentLanguage}
-                onContentChange={(content) => {}}
+                onContentChange={(content) => setFileContent(selectedFileId, content)}
                 height="100%"
               />
             ) : (
@@ -246,7 +238,8 @@ export function ProjectPage() {
                 <p>Select a file to start editing</p>
               </div>
             )}
-          </main>
+          </div>
+        </main>
 
           <aside className="w-80 border-l border-border bg-card flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
@@ -256,9 +249,14 @@ export function ProjectPage() {
               </button>
             </div>
             <TerminalComponent height={200} />
+            {(executionOutput || executionError) && (
+              <pre className="flex-1 overflow-auto p-2 text-xs font-mono whitespace-pre-wrap">{executionError || executionOutput}</pre>
+            )}
+            {wasmFallback && (
+              <div className="px-4 pb-2 text-xs text-yellow-400">WASM fallback: {fallbackReason}</div>
+            )}
           </aside>
         </div>
       </div>
-    </div>
   );
 }

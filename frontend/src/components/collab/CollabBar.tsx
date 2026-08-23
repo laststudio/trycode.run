@@ -1,5 +1,4 @@
-import { clsx } from 'clsx';
-import { UserCircleIcon, XMarkIcon, ShareIcon, LinkIcon } from '@heroicons/react/24/outline';
+import { LinkIcon } from '../../utils/icons';
 
 interface CollabUser {
   id: string;

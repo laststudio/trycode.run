@@ -1,45 +1,38 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  PlayIcon, 
-  StopIcon, 
-  BugAntIcon, 
+import {
+  PlayIcon,
+  StopIcon,
   SparklesIcon,
-  ArrowDownTrayIcon,
-  ArrowUpTrayIcon,
   PlusIcon,
   FolderPlusIcon,
-  MagnifyingGlassIcon,
   Cog6ToothIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
-} from '@heroicons/react/24/outline';
+} from '../utils/icons';
 import { MonacoEditor } from '../components/editor/MonacoEditor';
 import { TerminalComponent } from '../components/terminal/Terminal';
 import { FileTree } from '../components/filetree/FileTree';
 import { LanguageSelector } from './components/LanguageSelector';
-import { OutputPanel } from './components/OutputPanel';
 import { CollabBar } from '../components/collab/CollabBar';
 import { AiPanel } from '../components/ai/AiPanel';
-import { useEditorStore } from '../stores';
-import { useExecutionStore } from '../stores';
-import { useUIStore } from '../stores';
-import { useAuth } from '../hooks/useAuth';
+import { useEditorStore, useExecutionStore, useUIStore } from '../stores';
+import { useT } from '../i18n';
 import { executeCode } from '../utils/api';
 import { LANGUAGES, getLanguageById } from '../utils/languages';
 import { clsx } from 'clsx';
 
 export function EditorPage() {
   const navigate = useNavigate();
+  const t = useT();
   const { projectId } = useParams<{ projectId?: string }>();
-  const { user } = useAuth();
-  
-  const { 
-    currentProject, 
+
+  const {
+    currentProject,
     setCurrentProject,
-    files, 
-    selectedFileId, 
+    files,
+    selectedFileId,
     setSelectedFileId,
     activeTabId,
     setActiveTabId,
@@ -53,7 +46,6 @@ export function EditorPage() {
     terminalHeight,
     setTerminalHeight,
     showTerminal,
-    setShowTerminal,
     showOutput,
     setShowOutput,
     fileContents,
@@ -61,7 +53,7 @@ export function EditorPage() {
     markSaved,
     collabUsers,
   } = useEditorStore();
-  
+
   const {
     isExecuting,
     setIsExecuting,
@@ -76,13 +68,12 @@ export function EditorPage() {
     currentExecution,
     setCurrentExecution,
   } = useExecutionStore();
-  
-  const { 
-    openModal, 
-    closeModal,
+
+  const {
+    openModal,
     addToast,
     sidebarOpen,
-    toggleSidebar 
+    toggleSidebar
   } = useUIStore();
 
   const [resizing, setResizing] = useState<'sidebar' | 'terminal' | null>(null);
@@ -146,11 +137,11 @@ export function EditorPage() {
         setFallbackReason(response.data.fallback_reason);
       }
     } catch (error: any) {
-      setExecutionError(error.response?.data?.message || 'Execution failed');
+      setExecutionError(error.response?.data?.message || t('editor.executionFailed'));
     } finally {
       setIsExecuting(false);
     }
-  }, [selectedFileId, currentLanguage, currentProject, fileContents, files]);
+  }, [selectedFileId, currentLanguage, currentProject, fileContents, files, t]);
 
   const handleStop = () => {
     // Implementation for stopping execution
@@ -167,7 +158,7 @@ export function EditorPage() {
   const handleSave = () => {
     if (selectedFileId) {
       markSaved(selectedFileId);
-      addToast({ type: 'success', title: 'File saved' });
+      addToast({ type: 'success', title: t('editor.fileSaved') });
     }
   };
 
@@ -195,7 +186,7 @@ export function EditorPage() {
           <button
             onClick={toggleSidebar}
             className="p-1.5 hover:bg-accent rounded-lg transition-colors"
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-label={sidebarOpen ? t('editor.collapseSidebar') : t('editor.expandSidebar')}
           >
             <ChevronLeftIcon className={clsx('w-5 h-5', sidebarOpen && 'rotate-180')} />
           </button>
@@ -216,7 +207,7 @@ export function EditorPage() {
           <button
             onClick={handleNewFile}
             className="p-1.5 hover:bg-accent rounded-lg transition-colors"
-            title="New File (Ctrl+N)"
+            title={`${t('editor.newFile')} (Ctrl+N)`}
           >
             <PlusIcon className="w-5 h-5" />
           </button>
@@ -224,7 +215,7 @@ export function EditorPage() {
           <button
             onClick={handleNewFolder}
             className="p-1.5 hover:bg-accent rounded-lg transition-colors"
-            title="New Folder"
+            title={t('editor.newFolder')}
           >
             <FolderPlusIcon className="w-5 h-5" />
           </button>
@@ -232,9 +223,9 @@ export function EditorPage() {
           <button
             onClick={handleSave}
             className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-            title="Save (Ctrl+S)"
+            title={`${t('common.save')} (Ctrl+S)`}
           >
-            Save
+            {t('common.save')}
           </button>
 
           <div className="w-px h-6 bg-border mx-1" />
@@ -252,12 +243,12 @@ export function EditorPage() {
             {isExecuting ? (
               <>
                 <StopIcon className="w-5 h-5 animate-spin" />
-                Running...
+                {t('editor.running')}
               </>
             ) : (
               <>
                 <PlayIcon className="w-5 h-5" />
-                Run
+                {t('editor.run')}
               </>
             )}
           </button>
@@ -265,14 +256,14 @@ export function EditorPage() {
           {wasmFallback && (
             <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded flex items-center gap-1">
               <SparklesIcon className="w-3 h-3" />
-              WASM Fallback: {fallbackReason}
+              {t('editor.wasmFallback', { reason: fallbackReason ?? '' })}
             </span>
           )}
 
           <button
             onClick={() => setShowAi(!showAi)}
             className={clsx('p-1.5 rounded-lg transition-colors', showAi && 'bg-accent')}
-            title="AI Assistant"
+            title={t('editor.aiAssistant')}
           >
             <SparklesIcon className={clsx('w-5 h-5', showAi && 'text-primary')} />
           </button>
@@ -280,7 +271,7 @@ export function EditorPage() {
           <button
             onClick={() => navigate('/settings')}
             className="p-1.5 hover:bg-accent rounded-lg transition-colors"
-            title="Settings"
+            title={t('nav.settings')}
           >
             <Cog6ToothIcon className="w-5 h-5" />
           </button>
@@ -300,13 +291,13 @@ export function EditorPage() {
           {sidebarOpen && (
             <div className="p-2 border-b border-border flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                EXPLORER
+                {t('editor.explorer')}
               </span>
               <div className="flex items-center gap-1">
-                <button onClick={handleNewFile} className="p-1 hover:bg-accent rounded" title="New File">
+                <button onClick={handleNewFile} className="p-1 hover:bg-accent rounded" title={t('editor.newFile')}>
                   <PlusIcon className="w-4 h-4" />
                 </button>
-                <button onClick={handleNewFolder} className="p-1 hover:bg-accent rounded" title="New Folder">
+                <button onClick={handleNewFolder} className="p-1 hover:bg-accent rounded" title={t('editor.newFolder')}>
                   <FolderPlusIcon className="w-4 h-4" />
                 </button>
               </div>
@@ -379,7 +370,7 @@ export function EditorPage() {
               <button
                 onClick={handleNewFile}
                 className="p-2 hover:bg-accent rounded-l-lg transition-colors"
-                title="New File"
+                title={t('editor.newFile')}
               >
                 <PlusIcon className="w-4 h-4" />
               </button>
@@ -403,8 +394,8 @@ export function EditorPage() {
                   <svg className="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 00-2 2v3a2 2 0 01-2 2H7a2 2 0 01-2-2v-3a2 2 0 01-2-2H2a1 1 0 01-1-1V5a2 2 0 012-2h1a1 1 0 011-1z" />
                   </svg>
-                  <h3 className="text-lg font-medium mb-1">No file selected</h3>
-                  <p className="text-sm">Select a file from the explorer or create a new one</p>
+                  <h3 className="text-lg font-medium mb-1">{t('editor.noFileSelected')}</h3>
+                  <p className="text-sm">{t('editor.noFileSelectedHint')}</p>
                 </div>
               </div>
             )}
@@ -415,7 +406,7 @@ export function EditorPage() {
                 <AiPanel onClose={() => setShowAi(false)} />
               </div>
             )}
-          </main>
+          </div>
         </main>
 
         {/* Terminal Resizer */}
@@ -430,18 +421,34 @@ export function EditorPage() {
         {showTerminal && (
           <aside className={clsx('border-t border-border bg-card flex flex-col', showOutput ? 'h-[200px]' : 'h-10')} style={{ height: terminalHeight }}>
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">TERMINAL</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('editor.terminal')}</span>
+                {isExecuting && <span className="text-xs text-yellow-400">Running…</span>}
+                {!isExecuting && currentExecution && (
+                  <span className="text-xs text-muted-foreground">{currentExecution.status}</span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
-                <button className="p-1 hover:bg-accent rounded" title="Clear">
+                <button className="p-1 hover:bg-accent rounded" title={t('common.clear')}>
                   <XMarkIcon className="w-4 h-4" />
                 </button>
-                <button onClick={() => setShowOutput(!showOutput)} className="p-1 hover:bg-accent rounded" title="Toggle Output">
+                <button onClick={() => setShowOutput(!showOutput)} className="p-1 hover:bg-accent rounded" title={t('editor.toggleOutput')}>
                   <ChevronRightIcon className={clsx('w-4 h-4', showOutput && 'rotate-90')} />
                 </button>
               </div>
             </div>
             {showOutput && (
-              <TerminalComponent height={terminalHeight - 36} />
+              <>
+                <TerminalComponent height={terminalHeight - 36} />
+                {(executionOutput || executionError) && (
+                  <pre className="max-h-24 overflow-auto px-3 py-1 text-xs font-mono whitespace-pre-wrap border-t border-border">
+                    {executionError || executionOutput}
+                  </pre>
+                )}
+                {wasmFallback && (
+                  <div className="px-3 pb-1 text-xs text-yellow-400">WASM fallback: {fallbackReason}</div>
+                )}
+              </>
             )}
           </aside>
         )}
@@ -488,7 +495,7 @@ export function EditorPage() {
   );
 }
 
-function getFileIcon(fileName: string, mimeType?: string, className = 'w-4 h-4') {
+function getFileIcon(_fileName: string, _mimeType?: string, className = 'w-4 h-4') {
   // Simplified - would use the actual utility
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">

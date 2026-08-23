@@ -15,7 +15,7 @@ export function TerminalComponent({ height = 200, onInput }: TerminalProps) {
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon>(new FitAddon());
   const [initialized, setInitialized] = useState(false);
-  const { executionOutput, appendExecutionOutput, isExecuting } = useExecutionStore();
+  const { executionOutput, isExecuting } = useExecutionStore();
   const { currentProject } = useEditorStore();
 
   useEffect(() => {
@@ -27,7 +27,6 @@ export function TerminalComponent({ height = 200, onInput }: TerminalProps) {
         background: '#1e1e1e',
         foreground: '#d4d4d4',
         cursor: '#ffffff',
-        selection: '#264f78',
         black: '#000000',
         red: '#cd3131',
         green: '#0dbc79',
@@ -48,7 +47,6 @@ export function TerminalComponent({ height = 200, onInput }: TerminalProps) {
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: 13,
       lineHeight: 1.5,
-      cursorBlink: true,
       scrollback: 10000,
       allowTransparency: true,
       convertEol: true,
@@ -102,10 +100,6 @@ export function TerminalComponent({ height = 200, onInput }: TerminalProps) {
 
   const clear = useCallback(() => {
     termRef.current?.clear();
-  }, []);
-
-  const write = useCallback((data: string) => {
-    termRef.current?.write(data);
   }, []);
 
   const reset = useCallback(() => {

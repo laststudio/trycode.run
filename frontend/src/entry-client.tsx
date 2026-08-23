@@ -18,4 +18,4 @@ hydrateRoot(document.getElementById('root')!, (
       </ThemeProvider>
     </BrowserRouter>
   </HelmetProvider>
-);
+));

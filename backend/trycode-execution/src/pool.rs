@@ -1,8 +1,6 @@
 use bollard::{
-    container::{Config, CreateContainerOptions, StartContainerOptions, WaitContainerOptions},
-    models::{HostConfig, Mount, MountTypeEnum, Resources, Ulimit},
-    network::ConnectNetworkOptions,
-    secret::ContainerCreateResponse,
+    container::{Config, CreateContainerOptions, KillContainerOptions, StartContainerOptions, WaitContainerOptions},
+    models::{HostConfig, Mount, MountTypeEnum, MountTmpfsOptions, ResourcesUlimits},
     Docker,
 };
 use chrono::Utc;
@@ -12,6 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, Semaphore};
 use tracing::{error, info, warn};
+use uuid::Uuid;
 
 use crate::models::{Execution, ExecutionResult, ExecutionStatus, QueueMessage, ResourceLimits, WorkerInfo, WorkerStatus};
 use trycode_core::{CoreError, Result};
@@ -65,30 +64,41 @@ impl ExecutorPool {
     }
 
     pub async fn submit_execution(&self, message: QueueMessage) -> Result<()> {
-        let mut con = self.redis.get().await?;
+        let mut con = self
+            .redis
+            .get()
+            .await
+            .map_err(|e| CoreError::Internal(e.to_string()))?;
         let payload = serde_json::to_vec(&message)?;
-        con.xadd("exec:queue", "*", &[("data", payload)]).await?;
+        let _: () = con.xadd("exec:queue", "*", &[("data", payload)]).await?;
         Ok(())
     }
 
     pub async fn get_next_job(&self, worker_id: i32) -> Result<Option<QueueMessage>> {
-        let mut con = self.redis.get().await?;
-        
+        let mut con = self
+            .redis
+            .get()
+            .await
+            .map_err(|e| CoreError::Internal(e.to_string()))?;
+
         // Try to claim a job using consumer group
+        let options = redis::streams::StreamReadOptions::default()
+            .group("exec-workers", &format!("worker-{}", worker_id))
+            .count(1)
+            .block(5000);
         let result: Option<redis::streams::StreamReadReply> = con
-            .xread_group(
-                "exec-workers",
-                &format!("worker-{}", worker_id),
-                &[("exec:queue", ">")],
-                &[("COUNT", "1"), ("BLOCK", "5000")],
-            )
+            .xread_options(&["exec:queue"], &[">"], &options)
             .await?;
 
         if let Some(reply) = result {
             for stream in reply.keys {
-                for entry in stream.entries {
+                for entry in stream.ids {
                     if let Some(data) = entry.map.get("data") {
-                        let message: QueueMessage = serde_json::from_slice(data)?;
+                        let bytes = match data {
+                            redis::Value::Data(bytes) => bytes.clone(),
+                            _ => continue,
+                        };
+                        let message: QueueMessage = serde_json::from_slice(&bytes)?;
                         // Acknowledge the message
                         let _: () = con.xack("exec:queue", "exec-workers", &[entry.id]).await?;
                         return Ok(Some(message));
@@ -104,13 +114,13 @@ impl ExecutorPool {
         let _permit = self.semaphore.acquire().await.map_err(|_| CoreError::Internal("Semaphore closed".to_string()))?;
         
         // Update worker load
-        self.increment_worker_load(message.payload.resource_limits.max_concurrent.unwrap_or(1) as i32).await;
+        self.increment_worker_load(1).await;
 
         let worker = self.select_worker().await?;
         
         let result = self.run_in_container(&worker, &message).await;
 
-        self.decrement_worker_load(message.payload.resource_limits.max_concurrent.unwrap_or(1) as i32).await;
+        self.decrement_worker_load(1).await;
 
         result
     }
@@ -130,7 +140,7 @@ impl ExecutorPool {
             .min_by_key(|w| w.current_load)
             .unwrap();
 
-        Ok(selected.clone())
+        Ok((*selected).clone())
     }
 
     async fn increment_worker_load(&self, load: i32) {
@@ -147,14 +157,17 @@ impl ExecutorPool {
         let container_name = format!("exec-{}-{}", message.execution_id, Uuid::new_v4());
         
         // Build container config
-        let config = self.build_container_config(&message.payload).await?;
+        let config = self.build_container_config(&message.payload, &message.language).await?;
         
         let host_config = self.build_host_config(&message.payload.resource_limits).await?;
 
         // Create container
         let container = self.docker
             .create_container(
-                Some(CreateContainerOptions { name: container_name.clone() }),
+                Some(CreateContainerOptions {
+                    name: container_name.clone(),
+                    platform: None,
+                }),
                 config,
             )
             .await
@@ -162,7 +175,7 @@ impl ExecutorPool {
 
         // Start container
         self.docker
-            .start_container(&container.id, None::<StartContainerOptions>)
+            .start_container(&container.id, None::<StartContainerOptions<String>>)
             .await
             .map_err(|e| CoreError::Internal(format!("Container start failed: {}", e)))?;
 
@@ -170,14 +183,16 @@ impl ExecutorPool {
         let timeout = Duration::from_secs(message.payload.resource_limits.wall_time_secs as u64 + 10);
         
         let wait_result = tokio::time::timeout(timeout, async {
-            let mut wait_stream = self.docker.wait_container(&container.id, None::<WaitContainerOptions>);
+            let mut wait_stream = self.docker.wait_container(&container.id, None::<WaitContainerOptions<String>>);
             while let Some(result) = wait_stream.next().await {
                 match result {
                     Ok(status) => return Ok(status.status_code),
                     Err(e) => return Err(e),
                 }
             }
-            Err(bollard::errors::Error::from("Container wait stream ended"))
+            Err(bollard::errors::Error::DockerStreamError {
+                error: "Container wait stream ended".to_string(),
+            })
         }).await;
 
         let exit_code = match wait_result {
@@ -185,7 +200,10 @@ impl ExecutorPool {
             Ok(Err(e)) => return Err(CoreError::Internal(format!("Container wait error: {}", e))),
             Err(_) => {
                 // Timeout - kill container
-                let _ = self.docker.kill_container(&container_name, None).await;
+                let _ = self
+                    .docker
+                    .kill_container(&container_name, None::<KillContainerOptions<String>>)
+                    .await;
                 return Ok(ExecutionResult {
                     status: ExecutionStatus::Timeout,
                     stdout: None,
@@ -229,7 +247,7 @@ impl ExecutorPool {
         })
     }
 
-    async fn build_container_config(&self, payload: &crate::models::ExecutePayload) -> Result<Config> {
+    async fn build_container_config(&self, payload: &crate::models::ExecutePayload, language: &str) -> Result<Config<String>> {
         let mut env = vec![];
         
         // Add environment variables
@@ -237,7 +255,7 @@ impl ExecutorPool {
         env.push("PATH=/usr/local/bin:/usr/bin:/bin".to_string());
 
         // Prepare the execution command based on language
-        let cmd = self.build_execution_command(&payload).await?;
+        let cmd = self.build_execution_command(payload, language).await?;
 
         Ok(Config {
             image: Some("trycode/executor:latest".to_string()),
@@ -251,8 +269,8 @@ impl ExecutorPool {
         })
     }
 
-    async fn build_execution_command(&self, payload: &crate::models::ExecutePayload) -> Result<String> {
-        let lang_config = self.get_language_config(&payload.language).await?;
+    async fn build_execution_command(&self, payload: &crate::models::ExecutePayload, language: &str) -> Result<String> {
+        let lang_config = self.get_language_config(language).await?;
         
         // Write files to workspace
         let mut commands = vec![];
@@ -289,13 +307,13 @@ impl ExecutorPool {
     }
 
     async fn build_host_config(&self, limits: &ResourceLimits) -> Result<HostConfig> {
-        let mut ulimits = vec![
-            Ulimit {
+        let ulimits = vec![
+            ResourcesUlimits {
                 name: Some("nofile".to_string()),
                 soft: Some(1024),
                 hard: Some(1024),
             },
-            Ulimit {
+            ResourcesUlimits {
                 name: Some("nproc".to_string()),
                 soft: Some(limits.pids_limit as i64),
                 hard: Some(limits.pids_limit as i64),
@@ -303,25 +321,22 @@ impl ExecutorPool {
         ];
 
         Ok(HostConfig {
-            resources: Some(Resources {
-                cpu_quota: Some(limits.cpu_quota as i64),
-                memory: Some(limits.memory_limit_mb * 1024 * 1024),
-                pids_limit: Some(limits.pids_limit as i64),
-                ..Default::default()
-            }),
+            cpu_quota: Some(limits.cpu_quota as i64),
+            memory: Some((limits.memory_limit_mb * 1024 * 1024) as i64),
+            pids_limit: Some(limits.pids_limit as i64),
             ulimits: Some(ulimits),
             mounts: Some(vec![Mount {
                 target: Some("/workspace".to_string()),
                 source: Some("workspace".to_string()),
                 typ: Some(MountTypeEnum::TMPFS),
-                tmpfs: Some(bollard::models::TmpfsOptions {
-                    size_bytes: Some(limits.disk_mb as u64 * 1024 * 1024),
-                    mode: Some("1777".to_string()),
+                tmpfs_options: Some(MountTmpfsOptions {
+                    size_bytes: Some(limits.disk_mb as i64 * 1024 * 1024),
+                    mode: Some(1777),
                 }),
                 ..Default::default()
             }]),
             network_mode: Some("none".to_string()),
-            read_only: Some(true),
+            readonly_rootfs: Some(true),
             security_opt: Some(vec!["no-new-privileges:true".to_string()]),
             cap_drop: Some(vec!["ALL".to_string()]),
             cap_add: Some(vec!["SYS_PTRACE".to_string()]),

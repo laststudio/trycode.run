@@ -1,16 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { 
-  ChevronRightIcon, 
-  ChevronDownIcon, 
-  FileIcon, 
-  FolderIcon, 
-  PlusIcon, 
-  FolderPlusIcon,
-  Trash2Icon,
-  PencilIcon,
-  DownloadIcon,
+import { useState, useCallback, useEffect } from 'react';
+import {
+  ChevronRightIcon,
+  FileIcon,
+  FolderIcon,
+  PlusIcon,
   XMarkIcon,
-} from '@heroicons/react/24/outline';
+} from '../../utils/icons';
 import clsx from 'clsx';
 
 interface MobileFileTreeProps {
@@ -23,7 +18,7 @@ interface MobileFileTreeProps {
   onFileMove: (fileId: string, newParentId?: string) => void;
 }
 
-interface FileTreeItem {
+export interface FileTreeItem {
   id: string;
   name: string;
   isDirectory: boolean;
@@ -34,14 +29,13 @@ interface FileTreeItem {
   size?: number;
 }
 
-export function MobileFileTree({ 
-  projectId, 
-  onFileSelect, 
-  onFileCreate, 
-  onFolderCreate, 
-  onFileDelete, 
-  onFileRename, 
-  onFileMove,
+export function MobileFileTree({
+  projectId,
+  onFileSelect,
+  onFileCreate,
+  onFolderCreate,
+  onFileDelete,
+  onFileRename,
 }: MobileFileTreeProps) {
   const [files, setFiles] = useState<any[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -204,20 +198,22 @@ export function MobileFileTree({
                 <span className="truncate text-sm font-mono">{file.name}</span>
               )}
             </>
+          )}
+
           </div>
-          
+
           {file.isDirectory && isExpanded && (
             <div className="mt-1">
-              {file.children?.map(child => renderFileNode(child, depth + 1))}
-            )}
-          </div>
+              {file.children?.map((child: any) => renderFileNode(child, depth + 1))}
+            </div>
+          )}
         </div>
       )
     }, [expandedFolders, selectedFileId, renamingId, renameValue, onFileSelect, toggleFolder, onFileRename, onFileDelete]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showContextMenu && !event.target.closest('[data-context-menu]')) {
+      if (showContextMenu && !(event.target as HTMLElement).closest('[data-context-menu]')) {
         setShowContextMenu(null);
       }
     };
@@ -243,13 +239,64 @@ export function MobileFileTree({
   }
 
   return (
-    <div className="h-full overflow-y-auto p-2 bg-background">
+    <div className="h-full overflow-y-auto p-2 bg-background" data-project-id={projectId}>
       <div className="mb-2 px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         FILES
       </div>
       <div className="space-y-1">
         {files.map(file => renderFileNode(file))}
       </div>
+
+      {showContextMenu && (
+        <div
+          data-context-menu
+          className="fixed z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[160px]"
+          style={{ left: showContextMenu.x, top: showContextMenu.y }}
+        >
+          <button
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-accent transition-colors"
+            onClick={() => {
+              const f = showContextMenu.file;
+              handleCreateFile(f.isDirectory ? f.id : f.parentId);
+              setShowContextMenu(null);
+            }}
+          >
+            <PlusIcon className="w-4 h-4" />
+            New File
+          </button>
+          <button
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-accent transition-colors"
+            onClick={() => {
+              const f = showContextMenu.file;
+              handleCreateFolder(f.isDirectory ? f.id : f.parentId);
+              setShowContextMenu(null);
+            }}
+          >
+            <FolderIcon className="w-4 h-4" />
+            New Folder
+          </button>
+          <button
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-accent transition-colors"
+            onClick={() => {
+              handleRenameStart(showContextMenu.file);
+              setShowContextMenu(null);
+            }}
+          >
+            <FileIcon className="w-4 h-4" />
+            Rename
+          </button>
+          <button
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-red-500/10 text-destructive transition-colors"
+            onClick={() => {
+              handleDelete(showContextMenu.file.id);
+              setShowContextMenu(null);
+            }}
+          >
+            <XMarkIcon className="w-4 h-4" />
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }

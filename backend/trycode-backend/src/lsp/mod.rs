@@ -4,7 +4,6 @@ pub mod registry;
 pub mod types;
 pub mod ws_proxy;
 
-use crate::lsp::multiplexer::LSPMultiplexer;
 use crate::lsp::registry::get_default_lsp_servers;
 use crate::lsp::types::LSPMultiplexerConfig;
 use anyhow::Result;

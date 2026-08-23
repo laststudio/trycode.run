@@ -7,9 +7,9 @@ import {
   ArrowRightIcon,
   XMarkIcon,
   ClipboardDocumentIcon,
-} from '@heroicons/react/24/outline';
+} from '../../utils/icons.ts';
 import { useEditorStore } from '../../stores';
-import { useAuth } from '../../hooks/useAuth';
+
 import { executeAi } from '../../utils/api';
 import clsx from 'clsx';
 
@@ -19,7 +19,6 @@ interface AiPanelProps {
 
 export function AiPanel({ onClose }: AiPanelProps) {
   const { fileContents, selectedFileId, currentLanguage } = useEditorStore();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'explain' | 'review' | 'tests' | 'chat'>('explain');
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<string | null>(null);
@@ -144,7 +143,7 @@ export function AiPanel({ onClose }: AiPanelProps) {
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-transparent'
               )}
             >
-              <Icon className="w-4 h-4" />
+              <SparklesIcon className="w-4 h-4" />
               {label}
             </button>
           ))}
@@ -208,7 +207,7 @@ export function AiPanel({ onClose }: AiPanelProps) {
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-              <Icon className="w-16 h-16 mb-4 opacity-30" />
+              <SparklesIcon className="w-16 h-16 mb-4 opacity-30" />
               <h3 className="text-lg font-medium mb-1">No output yet</h3>
               <p className="text-sm text-center max-w-xs">
                 {activeTab === 'explain' && 'Select code and click Explain to get an explanation'}

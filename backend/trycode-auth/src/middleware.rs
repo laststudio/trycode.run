@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{FromRequestParts, OptionalFromRequestParts, Request, State},
+    extract::{FromRequestParts, Request},
     http::{header::AUTHORIZATION, request::Parts, StatusCode},
     middleware::Next,
     response::Response,
@@ -8,7 +8,40 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use std::sync::Arc;
 
-use crate::{jwt::{decode_token, Claims}, models::User, CoreError, Result};
+use crate::{jwt::decode_token, jwt::Claims, models::User};
+use trycode_core::config::JwtConfig;
+
+/// 状态需提供的认证依赖。各 crate 的 State 实现此 trait 即可使用认证提取器。
+pub trait AuthDepot: Send + Sync {
+    fn auth_db(&self) -> &sqlx::PgPool;
+    fn jwt_config(&self) -> &JwtConfig;
+}
+
+fn unauthorized(msg: &str) -> Response {
+    let mut resp = Response::new(axum::body::Body::from(msg.to_string()));
+    *resp.status_mut() = StatusCode::UNAUTHORIZED;
+    resp
+}
+
+fn forbidden(msg: &str) -> Response {
+    let mut resp = Response::new(axum::body::Body::from(msg.to_string()));
+    *resp.status_mut() = StatusCode::FORBIDDEN;
+    resp
+}
+
+fn extract_token(parts: &Parts) -> Option<String> {
+    let jar = CookieJar::from_headers(&parts.headers);
+    jar.get("access_token")
+        .map(|c| c.value().to_string())
+        .or_else(|| {
+            parts
+                .headers
+                .get(AUTHORIZATION)
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| s.strip_prefix("Bearer "))
+                .map(|s| s.to_string())
+        })
+}
 
 #[derive(Clone)]
 pub struct AuthExtractor {
@@ -19,60 +52,29 @@ pub struct AuthExtractor {
 #[async_trait]
 impl<S> FromRequestParts<S> for AuthExtractor
 where
-    S: Send + Sync,
+    S: Send + Sync + AuthDepot,
 {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> std::result::Result<Self, Self::Rejection> {
-        let jar = CookieJar::from_headers(&parts.headers);
-        
-        // Try to get token from cookie first
-        let token = jar.get("access_token")
-            .map(|c| c.value().to_string())
-            .or_else(|| {
-                parts.headers.get(AUTHORIZATION)
-                    .and_then(|h| h.to_str().ok())
-                    .and_then(|s| s.strip_prefix("Bearer "))
-                    .map(|s| s.to_string())
-            })
-            .ok_or_else(|| {
-                let mut resp = Response::new(axum::body::Body::from("Unauthorized"));
-                *resp.status_mut() = StatusCode::UNAUTHORIZED;
-                resp
-            })?;
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let token = extract_token(parts).ok_or_else(|| unauthorized("Unauthorized"))?;
 
-        // Get config from state (assuming state is Arc<AuthState>)
-        let config = {
-            let state = state as &Arc<crate::routes::AuthState>;
-            &state.config.jwt
-        };
+        let claims =
+            decode_token(&token, state.jwt_config()).map_err(|_| unauthorized("Invalid token"))?;
 
-        let claims = decode_token(&token, config)
-            .map_err(|_| {
-                let mut resp = Response::new(axum::body::Body::from("Invalid token"));
-                *resp.status_mut() = StatusCode::UNAUTHORIZED;
-                resp
-            })?;
+        let user: Option<User> =
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(&claims.sub)
+                .fetch_optional(state.auth_db())
+                .await
+                .map_err(|_| {
+                    let mut resp =
+                        Response::new(axum::body::Body::from("Database error"));
+                    *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    resp
+                })?;
 
-        // Get user from database
-        let db = {
-            let state = state as &Arc<crate::routes::AuthState>;
-            &state.db
-        };
-
-        let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", claims.sub)
-            .fetch_optional(db)
-            .await
-            .map_err(|_| {
-                let mut resp = Response::new(axum::body::Body::from("Database error"));
-                *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-                resp
-            })?
-            .ok_or_else(|| {
-                let mut resp = Response::new(axum::body::Body::from("User not found"));
-                *resp.status_mut() = StatusCode::UNAUTHORIZED;
-                resp
-            })?;
+        let user = user.ok_or_else(|| unauthorized("User not found"))?;
 
         Ok(Self { claims, user })
     }
@@ -85,87 +87,92 @@ pub struct OptionalAuthExtractor {
 }
 
 #[async_trait]
-impl<S> OptionalFromRequestParts<S> for OptionalAuthExtractor
+impl<S> FromRequestParts<S> for OptionalAuthExtractor
 where
-    S: Send + Sync,
+    S: Send + Sync + AuthDepot,
 {
-    type Rejection = Response;
+    type Rejection = std::convert::Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> std::result::Result<Self, Self::Rejection> {
-        let jar = CookieJar::from_headers(&parts.headers);
-        
-        let token = jar.get("access_token")
-            .map(|c| c.value().to_string())
-            .or_else(|| {
-                parts.headers.get(AUTHORIZATION)
-                    .and_then(|h| h.to_str().ok())
-                    .and_then(|s| s.strip_prefix("Bearer "))
-                    .map(|s| s.to_string())
-            });
-
-        if token.is_none() {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let Some(token) = extract_token(parts) else {
             return Ok(Self { claims: None, user: None });
-        }
-
-        let token = token.unwrap();
-
-        let config = {
-            let state = state as &Arc<crate::routes::AuthState>;
-            &state.config.jwt
         };
 
-        let claims = match decode_token(&token, config) {
-            Ok(c) => Some(c),
-            Err(_) => return Ok(Self { claims: None, user: None }),
+        let Ok(claims) = decode_token(&token, state.jwt_config()) else {
+            return Ok(Self { claims: None, user: None });
         };
 
-        if let Some(ref claims) = claims {
-            let db = {
-                let state = state as &Arc<crate::routes::AuthState>;
-                &state.db
-            };
-
-            let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", claims.sub)
-                .fetch_optional(db)
+        let user: Option<User> =
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(&claims.sub)
+                .fetch_optional(state.auth_db())
                 .await
                 .ok()
                 .flatten();
 
-            Ok(Self { claims, user })
-        } else {
-            Ok(Self { claims: None, user: None })
-        }
+        Ok(Self { claims: Some(claims), user })
+    }
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for Claims
+where
+    S: Send + Sync + AuthDepot,
+{
+    type Rejection = Response;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Claims, Self::Rejection> {
+        let token = extract_token(parts).ok_or_else(|| unauthorized("Unauthorized"))?;
+        let claims =
+            decode_token(&token, state.jwt_config()).map_err(|_| unauthorized("Invalid token"))?;
+        Ok(claims)
+    }
+}
+
+impl<T> AuthDepot for Arc<T>
+where
+    T: AuthDepot,
+{
+    fn auth_db(&self) -> &sqlx::PgPool {
+        (**self).auth_db()
+    }
+    fn jwt_config(&self) -> &JwtConfig {
+        (**self).jwt_config()
+    }
+}
+
+impl AuthDepot for crate::routes::AuthState {
+    fn auth_db(&self) -> &sqlx::PgPool {
+        &self.db
+    }
+    fn jwt_config(&self) -> &JwtConfig {
+        &self.config.jwt
     }
 }
 
 pub async fn require_admin(
     auth: AuthExtractor,
-    State(state): State<Arc<crate::routes::AuthState>>,
     request: Request,
     next: Next,
 ) -> Result<Response, Response> {
-    if auth.user.role != crate::models::UserRole::Admin && auth.user.role != crate::models::UserRole::SuperAdmin {
-        return Err({
-            let mut resp = Response::new(axum::body::Body::from("Forbidden: Admin required"));
-            *resp.status_mut() = StatusCode::FORBIDDEN;
-            resp
-        });
+    if auth.user.role != crate::models::UserRole::Admin
+        && auth.user.role != crate::models::UserRole::SuperAdmin
+    {
+        return Err(forbidden("Forbidden: Admin required"));
     }
     Ok(next.run(request).await)
 }
 
 pub async fn require_super_admin(
     auth: AuthExtractor,
-    State(state): State<Arc<crate::routes::AuthState>>,
     request: Request,
     next: Next,
 ) -> Result<Response, Response> {
     if auth.user.role != crate::models::UserRole::SuperAdmin {
-        return Err({
-            let mut resp = Response::new(axum::body::Body::from("Forbidden: Super admin required"));
-            *resp.status_mut() = StatusCode::FORBIDDEN;
-            resp
-        });
+        return Err(forbidden("Forbidden: Super admin required"));
     }
     Ok(next.run(request).await)
 }

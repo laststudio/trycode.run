@@ -1,29 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  PlayIcon, 
-  StopIcon, 
-  BugAntIcon, 
+import {
+  PlayIcon,
+  StopIcon,
+  BugAntIcon,
   SparklesIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
-  PlusIcon,
-  FolderPlusIcon,
-  MagnifyingGlassIcon,
-  Cog6ToothIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XMarkIcon,
+  ArrowPathIcon,
+  FolderIcon,
   LayoutIcon,
   CodeIcon,
   TerminalIcon,
   SmartphoneIcon,
-  TabletIcon,
-  DesktopIcon,
-  WifiIcon,
-  WifiOffIcon,
-} from '@heroicons/react/24/outline';
-import { useLanguageServiceManager } from '../../hooks/useLanguageServiceManager';
-import { usePWA } from '../../hooks/usePWA';
+} from '../../utils/icons';
 import clsx from 'clsx';
 
 interface MobileEditorToolbarProps {
@@ -32,13 +20,11 @@ interface MobileEditorToolbarProps {
   onModeChange: (mode: 'monaco' | 'lsp' | 'hybrid') => void;
   mode: 'monaco' | 'lsp' | 'hybrid';
   isOnline: boolean;
-  isInstallable: boolean;
-  isInstalled: boolean;
-  install: () => Promise<boolean>;
-  updateAvailable: boolean;
-  applyUpdate: () => void;
-  dismissUpdate: () => void;
-  isOnline: boolean;
+  isInstallable?: boolean;
+  isInstalled?: boolean;
+  install?: () => Promise<boolean>;
+  updateAvailable?: boolean;
+  applyUpdate?: () => void;
 }
 
 export function MobileEditorToolbar({
@@ -47,18 +33,12 @@ export function MobileEditorToolbar({
   onModeChange,
   mode,
   isOnline,
-  isInstallable,
-  isInstalled,
+  isInstallable = false,
+  isInstalled = false,
   install,
-  updateAvailable,
+  updateAvailable = false,
   applyUpdate,
-  dismissUpdate,
-  isOnline: isOnlineProp,
 }: MobileEditorToolbarProps) {
-  const [showModeSelector, setShowModeSelector] = useState(false);
-  const { isOnline: isPWAOnline, isInstalled, install } = usePWA();
-  
-  const isOnline = isOnlineProp;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-safe pb-4">
@@ -135,10 +115,10 @@ export function MobileEditorToolbar({
           <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-lg">
             <span className={clsx(
               'w-2 h-2 rounded-full',
-              isOnlineProp ? 'bg-green-400' : 'bg-red-400'
+              isOnline ? 'bg-green-400' : 'bg-red-400'
             )} />
             <span className="text-xs text-muted-foreground">
-              {isOnlineProp ? 'Online' : 'Offline'}
+              {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
           
@@ -195,19 +175,4 @@ export function MobileEditorToolbar({
       </div>
     </div>
   );
-}
-
-interface MobileEditorToolbarProps {
-  layout: 'editor' | 'terminal' | 'split' | 'files';
-  onLayoutChange: (layout: 'editor' | 'terminal' | 'split' | 'files') => void;
-  onModeChange: (mode: 'monaco' | 'lsp' | 'hybrid') => void;
-  mode: 'monaco' | 'lsp' | 'hybrid';
-  isOnline: boolean;
-  isInstallable: boolean;
-  isInstalled: boolean;
-  install: () => Promise<boolean>;
-  updateAvailable: boolean;
-  applyUpdate: () => void;
-  dismissUpdate: () => void;
-  isOnline: boolean;
 }

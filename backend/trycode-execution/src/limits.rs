@@ -1,6 +1,7 @@
-use crate::config::{DynamicConfig, ExecutionConfig, ExecutionConfigOverride, LanguageConfig};
+use trycode_core::config::{DynamicConfig, ExecutionConfigOverride};
 use crate::models::{ExecutionStatus, ResourceLimits, WasmConfig};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::warn;
 
@@ -153,21 +154,11 @@ impl LimitsEngine {
 
     /// Get retry configuration for a language
     pub fn get_retry_config(&self, language: &str) -> RetryConfig {
-        let lang_key = format!("language:{}", language);
-        
-        if let Some(override_config) = self.config.execution_configs.get(&lang_key) {
-            if let Some(retry) = &override_config.retry_config {
-                return retry.clone();
-            }
-        }
-
-        if let Some(override_config) = self.config.execution_configs.get("global") {
-            if let Some(retry) = &override_config.retry_config {
-                return retry.clone();
-            }
-        }
+        let _lang_key = format!("language:{}", language);
+        let _ = language;
 
         // Default retry config
+        // (per-language retry overrides are not part of ExecutionConfigOverride yet)
         RetryConfig {
             max_attempts: 3,
             backoff_base_ms: 1000,

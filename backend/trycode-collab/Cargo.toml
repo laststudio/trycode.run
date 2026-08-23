@@ -5,12 +5,17 @@ edition = "2021"
 
 [dependencies]
 trycode-core = { path = "../trycode-core" }
-yrs = { workspace = true }
-yrs-awareness = { workspace = true }
+trycode-auth = { path = "../trycode-auth" }
+axum = { workspace = true }
+yrs = { workspace = true, features = ["sync"] }
 tokio = { workspace = true }
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 tungstenite = "0.21"
+tokio-stream = "0.1"
 futures = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

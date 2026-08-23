@@ -25,7 +25,7 @@ const tsBuiltinTypes = [
   'Capitalize', 'Uncapitalize'
 ];
 
-const tsUtilityTypes = [
+export const tsUtilityTypes = [
   'Partial', 'Required', 'Readonly', 'Pick', 'Omit', 'Exclude', 'Extract',
   'NonNullable', 'ReturnType', 'InstanceType', 'Parameters', 'ConstructorParameters',
   'ThisParameterType', 'OmitThisParameter', 'ThisType', 'Uppercase', 'Lowercase',
@@ -247,7 +247,7 @@ const tsSnippets = [
   },
 ];
 
-const tsKeywordsList = [
+export const tsKeywordsList = [
   'abstract', 'as', 'asserts', 'async', 'await', 'break', 'case', 'catch',
   'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do',
   'else', 'enum', 'export', 'extends', 'false', 'finally', 'for', 'from',
@@ -261,7 +261,7 @@ const tsKeywordsList = [
   'target', 'this', 'await', 'async', 'await'
 ];
 
-const tsBuiltinTypesList = [
+export const tsBuiltinTypesList = [
   'string', 'number', 'boolean', 'object', 'symbol', 'bigint', 'undefined',
   'null', 'void', 'never', 'unknown', 'any', 'never', 'Array', 'Promise',
   'Date', 'RegExp', 'Error', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Function',
@@ -313,7 +313,7 @@ const tsStandardLibrary = [
   'AudioWorklet', 'AudioWorkletNode', 'AudioWorkletProcessor', 'AudioWorkletGlobalScope',
 ];
 
-function createTypeScriptCompletionProvider(monaco: typeof monaco) {
+function createTypeScriptCompletionProvider(monacoInstance: typeof monaco) {
   return {
     triggerCharacters: ['.', '(', '[', '"', "'", '`', '@', '#', '<', ':', '=', '|', '&', '?', ' ', '\t'],
     provideCompletionItems: (model: monaco.editor.ITextModel, position: monaco.Position) => {
@@ -367,7 +367,7 @@ function createTypeScriptCompletionProvider(monaco: typeof monaco) {
 
       return { suggestions };
     },
-    resolveCompletionItem: (item) => item,
+    resolveCompletionItem: (item: monaco.languages.CompletionItem) => item,
   };
 }
 

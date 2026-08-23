@@ -152,18 +152,26 @@ export function generateDynamicSEO(
   route: string,
   params: Record<string, string> = {}
 ): SEOData {
-  const baseConfig = routeSEOConfig[route] || {};
-  
+  const baseConfig = routeSEOConfig[route];
+
   // 替换参数
   const replaceParams = (str: string) => {
     return str.replace(/\{(\w+)\}/g, (_, key) => params[key] || `{${key}}`);
   };
 
+  if (!baseConfig) {
+    return {
+      title: defaultSEOConfig.defaultTitle,
+      description: defaultSEOConfig.defaultDescription,
+      canonical: `${defaultSEOConfig.siteUrl}${route}`,
+    };
+  }
+
   return {
     ...baseConfig,
-    title: baseConfig.title ? replaceParams(baseConfig.title) : undefined,
-    description: baseConfig.description ? replaceParams(baseConfig.description) : undefined,
-    canonical: baseConfig.canonical ? replaceParams(baseConfig.canonical) : undefined,
+    title: replaceParams(baseConfig.title),
+    description: replaceParams(baseConfig.description),
+    canonical: replaceParams(baseConfig.canonical),
     ogTitle: baseConfig.ogTitle ? replaceParams(baseConfig.ogTitle) : undefined,
     ogDescription: baseConfig.ogDescription ? replaceParams(baseConfig.ogDescription) : undefined,
     ogImage: baseConfig.ogImage ? replaceParams(baseConfig.ogImage) : undefined,
@@ -270,7 +278,7 @@ function escapeHtml(text: string): string {
 // React Hook：在组件中使用 SEO
 import { useEffect } from 'react';
 
-export function useSEO(seo: SEOData, config: SEOConfig = defaultSEOConfig) {
+export function useSEO(seo: SEOData, _config: SEOConfig = defaultSEOConfig) {
   useEffect(() => {
     // 更新 document.title
     document.title = seo.title;
@@ -360,5 +368,3 @@ export function useSEO(seo: SEOData, config: SEOConfig = defaultSEOConfig) {
     };
   }, [seo]);
 }
-
-export { defaultSEOConfig, routeSEOConfig, generateDynamicSEO, generateMetaTags, useSEO };

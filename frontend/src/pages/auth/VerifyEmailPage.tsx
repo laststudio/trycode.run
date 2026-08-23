@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircleIcon, EnvelopeIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, EnvelopeIcon, ArrowPathIcon } from '../../utils/icons.ts';
 import { useAuth } from '../../hooks/useAuth';
 import { useUIStore } from '../../stores';
 import clsx from 'clsx';

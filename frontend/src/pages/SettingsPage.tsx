@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserIcon, BellIcon, ShieldIcon, PaletteIcon, KeyIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../hooks/useAuth';
-import { useUIStore } from '../../stores';
-import { useTheme } from '../../hooks/useTheme';
+import { UserIcon, BellIcon, ShieldIcon, PaletteIcon, KeyIcon, ArrowRightIcon } from '../utils/icons.ts';
+import { useAuth } from '../hooks/useAuth';
+import { useUIStore } from '../stores';
+import { useTheme } from '../hooks/useTheme';
 import clsx from 'clsx';
 
 export function SettingsPage() {

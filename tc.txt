@@ -1,0 +1,242 @@
+
+src/components/editor/EditorContent.tsx(335,10): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/editor/EditorContent.tsx(509,14): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/editor/EditorContent.tsx(648,13): error TS17002: Expected corresponding JSX closing tag for 'aside'.
+src/components/editor/EditorContent.tsx(649,9): error TS1005: ')' expected.
+src/components/editor/EditorContent.tsx(651,5): error TS1005: ')' expected.
+src/components/editor/EditorContent.tsx(652,3): error TS1109: Expression expected.
+src/components/editor/MarkdownPreview.tsx(61,23): error TS1005: ')' expected.
+src/components/editor/MarkdownPreviewPanel.tsx(120,37): error TS1005: ')' expected.
+src/components/editor/MathComponents.tsx(120,37): error TS1005: ')' expected.
+src/components/editor/MobileFileTree.tsx(207,11): error TS1005: ')' expected.
+src/components/editor/MobileFileTree.tsx(212,14): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/editor/MobileFileTree.tsx(214,9): error TS1005: ')' expected.
+src/components/editor/MobileModeSelector.tsx(395,14): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,99): error TS1005: '}' expected.
+src/components/editor/SnippetSidebar.tsx(103,110): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,111): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(103,117): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,118): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,127): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,130): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,142): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,145): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(103,152): error TS1005: ':' expected.
+src/components/editor/SnippetSidebar.tsx(103,153): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(103,155): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(103,161): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,165): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,166): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,182): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,185): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(103,188): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,197): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,200): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,208): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(103,209): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(103,212): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(103,215): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(103,217): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(103,230): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(103,231): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(103,232): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(103,241): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(103,245): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(115,12): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(115,70): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,71): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(115,79): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,80): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(115,120): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,128): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(115,138): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,148): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(115,183): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,193): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(115,211): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,221): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,229): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(115,239): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,248): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,254): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,255): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(115,279): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(115,280): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(115,303): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(116,9): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(117,13): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(118,14): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(119,14): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(120,15): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(121,3): error TS1135: Argument expression expected.
+src/components/editor/SnippetSidebar.tsx(121,4): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(124,10): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(125,16): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(126,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,86): error TS1005: '}' expected.
+src/components/editor/SnippetSidebar.tsx(127,96): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,105): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,106): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,109): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,112): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,120): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(127,122): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,125): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,132): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,135): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,137): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,138): error TS1435: Unknown keyword or identifier. Did you mean 'interface'?
+src/components/editor/SnippetSidebar.tsx(127,149): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,152): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,162): error TS1435: Unknown keyword or identifier. Did you mean 'return'?
+src/components/editor/SnippetSidebar.tsx(127,170): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,171): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,174): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,177): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,184): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(127,186): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,189): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,196): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,197): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,200): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,203): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,212): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(127,222): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,223): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,226): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,229): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,236): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(127,251): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,254): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,256): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,257): error TS1435: Unknown keyword or identifier. Did you mean 'export'?
+src/components/editor/SnippetSidebar.tsx(127,278): error TS1005: '(' expected.
+src/components/editor/SnippetSidebar.tsx(127,280): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,301): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,313): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,329): error TS1005: '=>' expected.
+src/components/editor/SnippetSidebar.tsx(127,331): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,341): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,349): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,350): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,361): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,376): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,399): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,407): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,410): error TS1005: ')' expected.
+src/components/editor/SnippetSidebar.tsx(127,412): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,426): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(127,428): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,429): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,440): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,457): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,488): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,489): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,500): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,515): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,557): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,559): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,560): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,570): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(127,609): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,610): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,615): error TS1435: Unknown keyword or identifier. Did you mean 'set'?
+src/components/editor/SnippetSidebar.tsx(127,621): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,637): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,638): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,643): error TS1435: Unknown keyword or identifier. Did you mean 'set'?
+src/components/editor/SnippetSidebar.tsx(127,649): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(127,663): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,664): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,674): error TS1127: Invalid character.
+src/components/editor/SnippetSidebar.tsx(127,675): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,682): error TS1434: Unexpected keyword or identifier.
+src/components/editor/SnippetSidebar.tsx(127,685): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(129,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(130,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(131,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(132,15): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(133,3): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(133,4): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(136,10): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(137,16): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(138,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(139,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(140,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(141,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(142,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(143,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(144,15): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(145,3): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(145,4): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(148,10): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(149,16): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(150,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(151,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(152,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(153,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(154,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(155,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(156,15): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(157,3): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(157,4): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(160,10): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(161,16): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(162,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(163,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(164,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(165,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(166,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(167,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(168,15): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(169,3): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(169,4): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(172,10): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(173,16): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(174,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(175,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(176,9): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(177,13): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(178,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(179,14): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(180,15): error TS1005: ';' expected.
+src/components/editor/SnippetSidebar.tsx(181,3): error TS1109: Expression expected.
+src/components/editor/SnippetSidebar.tsx(181,4): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(182,1): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(392,8): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(479,8): error TS1128: Declaration or statement expected.
+src/components/editor/SnippetSidebar.tsx(560,11): error TS1005: ',' expected.
+src/components/editor/SnippetSidebar.tsx(718,6): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/components/editor/SnippetSidebar.tsx(750,45): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/components/editor/SnippetSidebar.tsx(817,21): error TS1005: ')' expected.
+src/components/editor/SnippetSidebar.tsx(819,8): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/editor/SnippetSidebar.tsx(822,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/editor/SnippetSidebar.tsx(824,31): error TS1005: '</' expected.
+src/components/filetree/FileTree.tsx(143,12): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/components/filetree/FileTree.tsx(145,7): error TS1005: ')' expected.
+src/entry-client.tsx(21,2): error TS1005: ')' expected.
+src/entry-server.tsx(61,4): error TS1005: ')' expected.
+src/hooks/useLSPClient.ts(178,2): error TS1005: ')' expected.
+src/hooks/useLSPClient.ts(226,2): error TS1005: '}' expected.
+src/hooks/usePWA.ts(89,14): error TS1128: Declaration or statement expected.
+src/hooks/usePWA.ts(309,4): error TS1005: ')' expected.
+src/hooks/useSnippetLibrary.ts(372,8): error TS1128: Declaration or statement expected.
+src/hooks/useSnippetLibrary.ts(456,8): error TS1128: Declaration or statement expected.
+src/hooks/useSnippetLibrary.ts(532,11): error TS1005: ',' expected.
+src/hooks/useSnippetLibrary.ts(776,8): error TS1128: Declaration or statement expected.
+src/hooks/useSnippetLibrary.ts(860,8): error TS1128: Declaration or statement expected.
+src/hooks/useSnippetLibrary.ts(936,11): error TS1005: ',' expected.
+src/hooks/useWebhooks.ts(289,6): error TS1128: Declaration or statement expected.
+src/hooks/useWebhooks.ts(289,10): error TS1005: ';' expected.
+src/hooks/useWebhooks.ts(346,7): error TS1005: ')' expected.
+src/hooks/useWebhooks.ts(511,9): error TS1005: ')' expected.
+src/pages/EditorPage.tsx(392,12): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/pages/EditorPage.tsx(421,11): error TS17002: Expected corresponding JSX closing tag for 'div'.
+src/pages/EditorPage.tsx(464,7): error TS1005: ')' expected.
+src/pages/EditorPage.tsx(489,5): error TS1128: Declaration or statement expected.
+src/pages/EditorPage.tsx(490,3): error TS1109: Expression expected.
+src/pages/ProjectPage.tsx(236,12): error TS17008: JSX element 'div' has no corresponding closing tag.
+src/pages/ProjectPage.tsx(262,5): error TS1005: ')' expected.
+src/pages/ProjectPage.tsx(263,3): error TS1109: Expression expected.
+

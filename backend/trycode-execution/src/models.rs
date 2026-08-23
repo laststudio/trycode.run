@@ -101,6 +101,12 @@ pub struct QueueMessage {
     pub payload: ExecutePayload,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecuteWSQuery {
+    pub language_id: Option<String>,
+    pub execution_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutePayload {
     pub code: String,
@@ -111,7 +117,7 @@ pub struct ExecutePayload {
     pub wasm_config: WasmConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResourceLimits {
     pub cpu_time_secs: u32,
     pub wall_time_secs: u32,

@@ -5,11 +5,16 @@ edition = "2021"
 
 [dependencies]
 trycode-core = { path = "../trycode-core" }
+trycode-auth = { path = "../trycode-auth" }
+axum = { workspace = true }
 reqwest = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = "0.1"
+futures = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-tokio = { workspace = true }
-futures = { workspace = true }
-async-channel = { workspace = true }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LockClosedIcon, EyeIcon, EyeSlashIcon, CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { LockClosedIcon, EyeIcon, EyeSlashIcon, CheckCircleIcon, ArrowRightIcon } from '../../utils/icons.ts';
 import { useAuth } from '../../hooks/useAuth';
 import { useUIStore } from '../../stores';
 import clsx from 'clsx';

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { XMarkIcon, ArrowDownTrayIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowDownTrayIcon, ClipboardDocumentListIcon } from '../../utils/icons.ts';
 import { useExecutionStore } from '../../stores';
 import clsx from 'clsx';
 

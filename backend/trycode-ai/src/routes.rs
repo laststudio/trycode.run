@@ -1,14 +1,13 @@
 use axum::{
     extract::{State, Query},
-    http::StatusCode,
-    response::{sse::{Event, Sse}, Json, Sse, Response},
-    body::Body,
+    response::{sse::{Event, Sse}, Json},
 };
-use futures::stream::Stream;
+use futures::{stream::Stream, StreamExt};
 use std::sync::Arc;
 use std::convert::Infallible;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::models::{
@@ -43,22 +42,25 @@ pub async fn ai_stream_chat(
     State(state): State<Arc<AiState>>,
     auth: AuthExtractor,
     Json(payload): Json<AiRequest>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    if !state.config.ai.enabled {
-        return Sse::new(futures::stream::once(async { 
-            Ok(Event::default().data("AI features disabled")) 
-        }));
-    }
-
+) -> Sse<impl Stream<Item = std::result::Result<Event, Infallible>>> {
     let (tx, rx) = mpsc::unbounded_channel();
-    let gateway = state.gateway.clone();
-    let payload_clone = payload.clone();
 
-    tokio::spawn(async move {
-        if let Err(e) = gateway.stream_chat(payload_clone, tx).await {
-            error!("AI stream error: {}", e);
-        }
-    });
+    if !state.config.ai.enabled {
+        let _ = tx.send(AiStreamChunk {
+            content: "AI features disabled".to_string(),
+            done: true,
+            model: String::new(),
+        });
+    } else {
+        let gateway = state.gateway.clone();
+        let payload_clone = payload.clone();
+
+        tokio::spawn(async move {
+            if let Err(e) = gateway.stream_chat(payload_clone, tx).await {
+                error!("AI stream error: {}", e);
+            }
+        });
+    }
 
     let stream = UnboundedReceiverStream::new(rx)
         .map(|chunk| {
@@ -126,13 +128,12 @@ pub async fn ai_generate_tests(
 
 async fn check_ai_quota(db: &sqlx::PgPool, user_id: Uuid) -> Result<()> {
     // Check daily AI request limit
-    let count: i64 = sqlx::query_scalar!(
+    let count: i64 = sqlx::query_scalar::<_, i64>(
         "SELECT COUNT(*) FROM ai_usage_logs WHERE user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'",
-        user_id
     )
+    .bind(user_id)
     .fetch_one(db)
-    .await?
-    .unwrap_or(0);
+    .await?;
 
     if count >= 100 {
         return Err(CoreError::RateLimited("Daily AI request limit exceeded".to_string()));
@@ -151,4 +152,13 @@ pub struct AiState {
     pub db: sqlx::PgPool,
     pub gateway: Arc<crate::gateway::AiGateway>,
     pub config: trycode_core::config::AppConfig,
+}
+
+impl trycode_auth::middleware::AuthDepot for AiState {
+    fn auth_db(&self) -> &sqlx::PgPool {
+        &self.db
+    }
+    fn jwt_config(&self) -> &trycode_core::config::JwtConfig {
+        &self.config.jwt
+    }
 }

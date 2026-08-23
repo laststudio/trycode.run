@@ -2,21 +2,18 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
-import clsx from 'clsx';
 
 interface MobileTerminalProps {
   height?: number;
   onInput?: (data: string) => void;
   isOpen?: boolean;
   onClose?: () => void;
-  height?: number;
 }
 
-export function MobileTerminal({ 
-  height = 200, 
-  onInput, 
+export function MobileTerminal({
+  height = 200,
+  onInput,
   isOpen = true,
-  onClose,
 }: MobileTerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -32,7 +29,6 @@ export function MobileTerminal({
         background: '#1e1e1e',
         foreground: '#d4d4d4',
         cursor: '#ffffff',
-        selection: '#264f78',
         black: '#000000',
         red: '#cd3131',
         green: '#0dbc79',
@@ -53,7 +49,6 @@ export function MobileTerminal({
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: 12,
       lineHeight: 1.5,
-      cursorBlink: true,
       scrollback: 5000,
       allowTransparency: true,
       convertEol: true,
@@ -92,10 +87,6 @@ export function MobileTerminal({
     if (termRef.current) {
       // 这里可以通过 props 传入输出内容
     }
-  }, []);
-
-  const write = useCallback((data: string) => {
-    termRef.current?.write(data);
   }, []);
 
   const clear = useCallback(() => {
@@ -149,11 +140,4 @@ export function MobileTerminal({
       <div ref={terminalRef} className="h-full" />
     </div>
   );
-}
-
-interface MobileTerminalProps {
-  height?: number;
-  onInput?: (data: string) => void;
-  isOpen?: boolean;
-  onClose?: () => void;
 }

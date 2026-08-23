@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon, UserIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon, UserIcon } from '../../utils/icons.ts';
 import { useAuth } from '../../hooks/useAuth';
 import { useUIStore } from '../../stores';
+import { useT } from '../../i18n';
 import clsx from 'clsx';
 
 export function LoginPage() {
@@ -10,6 +11,7 @@ export function LoginPage() {
   const location = useLocation();
   const { login } = useAuth();
   const { addToast } = useUIStore();
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,13 +25,13 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password, captchaToken);
-      addToast({ type: 'success', title: 'Welcome back!' });
+      addToast({ type: 'success', title: t('auth.login.welcomeBack') });
       navigate(from, { replace: true });
     } catch (error: any) {
-      addToast({ 
-        type: 'error', 
-        title: 'Login failed', 
-        message: error.response?.data?.message || 'Invalid credentials' 
+      addToast({
+        type: 'error',
+        title: t('auth.login.failed'),
+        message: error.response?.data?.message || t('auth.login.invalidCredentials')
       });
     } finally {
       setLoading(false);
@@ -40,13 +42,13 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground mt-2">Sign in to your TryCode account</p>
+          <h1 className="text-3xl font-bold">{t('auth.login.title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('auth.login.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium mb-1">{t('auth.login.email')}</label>
             <div className="relative">
               <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
@@ -63,7 +65,7 @@ export function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium mb-1">{t('auth.login.password')}</label>
             <div className="relative">
               <LockClosedIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
@@ -88,7 +90,7 @@ export function LoginPage() {
 
           {/* CAPTCHA placeholder */}
           <div className="p-3 bg-muted/50 rounded-lg border border-border">
-            <p className="text-sm text-muted-foreground mb-2">CAPTCHA verification required</p>
+            <p className="text-sm text-muted-foreground mb-2">{t('auth.login.captchaRequired')}</p>
             <div className="w-full h-10 bg-background border border-border rounded flex items-center justify-center">
               <span className="text-sm text-muted-foreground">[CAPTCHA Widget - trycap.dev]</span>
             </div>
@@ -110,21 +112,21 @@ export function LoginPage() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             ) : (
-              'Sign in'
+              t('auth.login.submit')
             )}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{' '}
+            {t('auth.login.noAccount')}{' '}
             <button onClick={() => navigate('/register')} className="text-primary hover:underline font-medium">
-              Sign up
+              {t('auth.login.toRegister')}
             </button>
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             <button onClick={() => navigate('/forgot-password')} className="text-primary hover:underline">
-              Forgot password?
+              {t('auth.login.forgotPassword')}
             </button>
           </p>
         </div>
@@ -135,7 +137,7 @@ export function LoginPage() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-background text-muted-foreground">Or continue with</span>
+              <span className="px-2 bg-background text-muted-foreground">{t('auth.login.orContinueWith')}</span>
             </div>
           </div>
           
@@ -143,7 +145,7 @@ export function LoginPage() {
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.804 2.807 1.284 3.499 1.284 1.07 0 2.134-.744 3.499-1.284 1.07-1.804 1.839-1.804 1.839-1.839 0-.729.083-.729.083-.729-.546-1.387-1.333-1.756-1.333-1.756v-2.234c0-.316.201-.577.793-.577.599 0 .793.261.793.577v2.234c3.338-.726 4.033-1.416 4.033-1.416.546 1.387 1.333 1.756 1.333 1.756 1.089.745.083.729.083.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.804 2.807 1.284 3.499 1.284 1.07 0 2.134-.744 3.499-1.284 1.07-1.804 1.839-1.804 1.839-1.839 0-.729.083-.729.083-.729-.546-1.387-1.333-1.756-1.333-1.756v-2.234c0-.316.201-.577.793-.577.599 0 .793.261.793.577v2.234c3.338-.726 4.033-1.416 4.033-1.416.546 1.387 1.333 1.756 1.333 1.756 1.089.745.083.729.083.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.804 2.807 1.284 3.499 1.284 1.07 0 2.134-.744 3.499-1.284 1.07-1.804 1.839-1.804 1.839-1.839 0-.729.083-.729.083-.729-.546-1.387-1.333-1.756-1.333-1.756v-2.234c0-.316.201-.577.793-.577.599 0 .793.261.793.577v2.234c3.338-.726 4.033-1.416 4.033-1.416.546 1.387 1.333 1.756 1.333 1.756 1.089.745.083.729.083.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.804 2.807 1.284 3.499 1.284 1.07 0 2.134-.744 3.499-1.284 1.07-1.804 1.839-1.804 1.839-1.839 0-.729.083-.729.083-.729-.546-1.387-1.333-1.756-1.333-1.756v-2.234c0-.316.201-.577.793-.577.599 0 .793.261.793.577v2.234c3.338-.726 4.033-1.416 4.033-1.416.546 1.387 1.333 1.756 1.333 1.756 1.089.745.083.729.083.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.804 2.807 1.284 3.499 1.284 1.07 0 2.134-.744 3.499-1.284 1.07-1.804 1.839-1.804 1.839-1.839 0-.729.083-.729.083-.729-.546-1.387-1.333-1.756-1.333-1.756v-2.234c0-.316.201-.577.793-.577.599 0 .793.261.793.577v2.234c3.338-.726 4.033-1.416 4.033-1.416.546 1.387 1.333 1.756 1.333 1.756 1.089.745.083.729.083.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.804 2.807 1.284 3.499 1.284 1.07 0 2.134-.744 3.499-1.284 1.07-1.804 1.839-1.804 1.839-1.839 0-.729.083-.729.083-.729-.546-1.387-1.333-1.756-1.333-1.756" />
             </svg>
-            <span>Continue with GitHub</span>
+            <span>{t('auth.login.continueWithGithub')}</span>
           </button>
         </div>
       </div>

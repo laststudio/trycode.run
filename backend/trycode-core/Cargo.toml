@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -11,10 +12,14 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
-validator = { workspace = true }
 sqlx = { workspace = true }
 redis = { workspace = true }
 figment = { workspace = true }
 once_cell = { workspace = true }
 parking_lot = { workspace = true }
 bytes = { workspace = true }
+tokio = { workspace = true }
+secrecy = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+deadpool-redis = { workspace = true }

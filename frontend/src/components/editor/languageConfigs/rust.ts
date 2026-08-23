@@ -307,7 +307,7 @@ const rustSnippets = [
 /**
  * 创建 Rust Monaco 补全提供者
  */
-export function createRustCompletionProvider(monaco: typeof monaco) {
+export function createRustCompletionProvider(monacoInstance: typeof monaco) {
   const allKeywords = rustKeywords;
   const allSnippets = rustSnippets;
 

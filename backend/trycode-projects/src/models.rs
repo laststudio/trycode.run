@@ -72,6 +72,7 @@ pub struct ShareLink {
     pub expires_at: Option<DateTime<Utc>>,
     pub max_views: Option<i32>,
     pub view_count: i32,
+    #[sqlx(json)]
     pub permissions: SharePermissions,
     pub created_at: DateTime<Utc>,
 }

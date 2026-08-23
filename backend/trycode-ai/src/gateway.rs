@@ -1,6 +1,5 @@
 use chrono::Utc;
 use reqwest::Client;
-use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -80,8 +79,9 @@ impl AiGateway {
         let latency_ms = start.elapsed().as_millis() as u32;
 
         if !response.status().is_success() {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            error!("AI API error: {} - {}", response.status(), error_text);
+            error!("AI API error: {} - {}", status, error_text);
             
             // Log failed usage
             let log = AiUsageLog {

@@ -18,12 +18,15 @@ export const MonacoProviders = {
   go: GoProviderFactory,
 };
 
-export function registerMonacoProviders(monaco: typeof monaco) {
+export function registerMonacoProviders(monacoInstance: typeof import('monaco-editor')) {
   // Register completion providers for all languages
   Object.entries(MonacoProviders).forEach(([langId, factory]) => {
-    if (factory.completion) {
-      const provider = factory.completion(monaco);
-      monaco.languages.registerCompletionItemProvider(langId, provider);
+    if ('completion' in factory && typeof factory.completion === 'function') {
+      const provider = factory.completion(monacoInstance);
+      monacoInstance.languages.registerCompletionItemProvider(langId, provider);
+    } else if (typeof (factory as any).createCompletionProvider === 'function') {
+      const provider = (factory as any).createCompletionProvider(monacoInstance);
+      monacoInstance.languages.registerCompletionItemProvider(langId, provider);
     }
   });
 }

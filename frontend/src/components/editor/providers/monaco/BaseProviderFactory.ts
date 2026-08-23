@@ -1,13 +1,12 @@
-import * as monaco from 'monaco-editor';
-import type { LanguageIntelliSenseConfig } from './types';
+import type * as monaco from 'monaco-editor';
 
 export class BaseProviderFactory {
-  protected monaco: typeof monaco;
+  protected monacoInstance: typeof monaco;
   protected languageId: string;
   protected monacoLanguageId: string;
 
-  constructor(monaco: typeof monaco, languageId: string, monacoLanguageId: string) {
-    this.monaco = monaco;
+  constructor(monacoInstance: typeof monaco, languageId: string, monacoLanguageId: string) {
+    this.monacoInstance = monacoInstance;
     this.languageId = languageId;
     this.monacoLanguageId = monacoLanguageId;
   }
@@ -43,8 +42,12 @@ export class BaseProviderFactory {
   createSignatureHelpProvider(): monaco.languages.SignatureHelpProvider {
     return {
       signatureHelpTriggerCharacters: this.getSignatureHelpTriggerCharacters(),
-      provideSignatureHelp: (model, position, token, context) => {
-        return this.provideSignatureHelp(model, position, token, context);
+      provideSignatureHelp: async (model, position, token, context) => {
+        const help = await Promise.resolve(
+          this.provideSignatureHelp(model, position, token, context)
+        );
+        if (!help) return undefined;
+        return { ...help, dispose: () => {} };
       },
     };
   }
@@ -98,84 +101,84 @@ export class BaseProviderFactory {
   }
 
   protected provideCompletionItems(
-    model: monaco.editor.ITextModel,
-    position: monaco.Position,
-    context: monaco.languages.CompletionContext,
-    token: monaco.CancellationToken
+    _model: monaco.editor.ITextModel,
+    _position: monaco.Position,
+    _context: monaco.languages.CompletionContext,
+    _token: monaco.CancellationToken
   ): monaco.languages.CompletionList | Promise<monaco.languages.CompletionList> {
     return { suggestions: [] };
   }
 
   protected resolveCompletionItem(
     item: monaco.languages.CompletionItem,
-    token: monaco.CancellationToken
+    _token: monaco.CancellationToken
   ): monaco.languages.CompletionItem | Promise<monaco.languages.CompletionItem> {
     return item;
   }
 
   protected provideHover(
-    model: monaco.editor.ITextModel,
-    position: monaco.Position,
-    token: monaco.CancellationToken
-  ): monaco.languages.Hover | Promise<monaco.languages.Hover | null> {
-    return null;
+    _model: monaco.editor.ITextModel,
+    _position: monaco.Position,
+    _token: monaco.CancellationToken
+  ): monaco.languages.Hover | undefined | Promise<monaco.languages.Hover | undefined> {
+    return undefined;
   }
 
   protected provideDefinition(
-    model: monaco.editor.ITextModel,
-    position: monaco.Position,
-    token: monaco.CancellationToken
-  ): monaco.languages.Definition | Promise<monaco.languages.Definition | null> {
-    return null;
+    _model: monaco.editor.ITextModel,
+    _position: monaco.Position,
+    _token: monaco.CancellationToken
+  ): monaco.languages.Definition | undefined | Promise<monaco.languages.Definition | undefined> {
+    return undefined;
   }
 
   protected provideSignatureHelp(
-    model: monaco.editor.ITextModel,
-    position: monaco.Position,
-    token: monaco.CancellationToken,
-    context: monaco.languages.SignatureHelpContext
-  ): monaco.languages.SignatureHelp | Promise<monaco.languages.SignatureHelp | null> {
-    return null;
+    _model: monaco.editor.ITextModel,
+    _position: monaco.Position,
+    _token: monaco.CancellationToken,
+    _context: monaco.languages.SignatureHelpContext
+  ): monaco.languages.SignatureHelp | undefined | Promise<monaco.languages.SignatureHelp | undefined> {
+    return undefined;
   }
 
   protected provideDocumentSymbols(
-    model: monaco.editor.ITextModel,
-    token: monaco.CancellationToken
+    _model: monaco.editor.ITextModel,
+    _token: monaco.CancellationToken
   ): monaco.languages.DocumentSymbol[] | Promise<monaco.languages.DocumentSymbol[]> {
     return [];
   }
 
   protected provideCodeActions(
-    model: monaco.editor.ITextModel,
-    range: monaco.Range,
-    context: monaco.languages.CodeActionContext,
-    token: monaco.CancellationToken
+    _model: monaco.editor.ITextModel,
+    _range: monaco.Range,
+    _context: monaco.languages.CodeActionContext,
+    _token: monaco.CancellationToken
   ): monaco.languages.CodeActionList | Promise<monaco.languages.CodeActionList> {
     return { actions: [], dispose: () => {} };
   }
 
   protected provideReferences(
-    model: monaco.editor.ITextModel,
-    position: monaco.Position,
-    context: monaco.languages.ReferenceContext,
-    token: monaco.CancellationToken
+    _model: monaco.editor.ITextModel,
+    _position: monaco.Position,
+    _context: monaco.languages.ReferenceContext,
+    _token: monaco.CancellationToken
   ): monaco.languages.Location[] | Promise<monaco.languages.Location[]> {
     return [];
   }
 
   protected provideRenameEdits(
-    model: monaco.editor.ITextModel,
-    position: monaco.Position,
-    newName: string,
-    token: monaco.CancellationToken
-  ): monaco.languages.WorkspaceEdit | Promise<monaco.languages.WorkspaceEdit | null> {
-    return null;
+    _model: monaco.editor.ITextModel,
+    _position: monaco.Position,
+    _newName: string,
+    _token: monaco.CancellationToken
+  ): monaco.languages.WorkspaceEdit | undefined | Promise<monaco.languages.WorkspaceEdit | undefined> {
+    return undefined;
   }
 
   protected provideFormattingEdits(
-    model: monaco.editor.ITextModel,
-    options: monaco.languages.FormattingOptions,
-    token: monaco.CancellationToken
+    _model: monaco.editor.ITextModel,
+    _options: monaco.languages.FormattingOptions,
+    _token: monaco.CancellationToken
   ): monaco.languages.TextEdit[] | Promise<monaco.languages.TextEdit[]> {
     return [];
   }

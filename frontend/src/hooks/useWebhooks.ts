@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useEditorStore } from '../../stores';
 
 export interface WebhookConfig {
   id: string;
@@ -25,7 +24,8 @@ export type WebhookEvent =
   | 'user.registered'
   | 'user.login'
   | 'collab.invited'
-  | 'share.created';
+  | 'share.created'
+  | 'test';
 
 export interface RetryPolicy {
   maxRetries: number;
@@ -209,8 +209,6 @@ export function useWebhooks() {
     const maxRetries = webhook.retryPolicy?.maxRetries ?? DEFAULT_RETRY_POLICY.maxRetries;
     let attempt = 0;
     let delay = webhook.retryPolicy?.initialDelayMs ?? DEFAULT_RETRY_POLICY.initialDelayMs;
-    const maxDelay = webhook.retryPolicy?.maxDelayMs ?? DEFAULT_RETRY_POLICY.maxDelayMs;
-    const multiplier = webhook.retryPolicy?.backoffMultiplier ?? DEFAULT_RETRY_POLICY.backoffMultiplier;
 
     while (attempt <= maxRetries) {
       attempt++;
@@ -286,7 +284,8 @@ export function useWebhooks() {
           return { success: false, error: errorMessage };
         }
       }
-    }, []);
+      }
+  }, []);
 
   const updateLogStatus = useCallback((logId: string, status: WebhookDeliveryLog['status'], updates: Partial<WebhookDeliveryLog>) => {
     setState(prev => {
@@ -308,25 +307,7 @@ export function useWebhooks() {
       data: { message: 'This is a test webhook from TryCode' },
     };
 
-    const result = await deliverWebhook(state.webhooks.get(webhookId)!, {
-      event: 'test',
-      timestamp: Date.now(),
-      data: { message: 'This is a test webhook from TryCode' },
-    }, {
-      id: `test-${Date.now()}`,
-      webhookId,
-      event: 'test',
-      payload: {
-        event: 'test',
-        timestamp: Date.now(),
-        data: { message: 'This is a test webhook from TryCode' },
-      },
-      status: 'pending',
-      attempts: 0,
-      createdAt: Date.now(),
-    });
-
-    return result;
+    return deliverWebhook(webhook, testPayload);
   }, [state.webhooks]);
 
   const getDeliveryLogs = useCallback((webhookId?: string, limit = 100) => {
@@ -343,7 +324,7 @@ export function useWebhooks() {
       deliveryLogs: webhookId 
         ? prev.deliveryLogs.filter(l => l.webhookId !== webhookId)
         : [],
-    });
+    }));
   }, []);
 
   const retryFailed = useCallback(async (logId: string) => {
@@ -389,129 +370,5 @@ export function useWebhooks() {
     getDeliveryLogs,
     clearLogs,
     retryFailed,
-  };
-}
-
-export function useWebhooks() {
-  const [state, setState] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('webhook-config');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return {
-            webhooks: new Map(Object.entries(parsed.webhooks || {})),
-            deliveryLogs: parsed.deliveryLogs || [],
-            isLoading: false,
-          };
-        }
-      } catch (e) {
-        console.warn('Failed to load webhooks:', e);
-      }
-    }
-    return {
-      webhooks: new Map(),
-      deliveryLogs: [],
-      isLoading: false,
-    };
-  });
-
-  const persistState = useCallback((newState: any) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('webhook-config', JSON.stringify({
-          webhooks: Object.fromEntries(newState.webhooks),
-          deliveryLogs: newState.deliveryLogs.slice(-1000),
-        }));
-      } catch (e) {
-        console.warn('Failed to persist webhooks:', e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    persistState(state);
-  }, [state, persistState]);
-
-  // ... 复用上面的实现，这里简化
-  const createWebhook = useCallback((config: any) => {
-    const newWebhook = {
-      ...config,
-      id: `webhook-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    setState(prev => {
-      const newWebhooks = new Map(prev.webhooks);
-      newWebhooks.set(newWebhook.id, newWebhook);
-      return { ...prev, webhooks: newWebhooks };
-    });
-    return newWebhook;
-  }, []);
-
-  const updateWebhook = useCallback((id: string, updates: any) => {
-    setState(prev => {
-      const webhook = prev.webhooks.get(id);
-      if (!webhook) return prev;
-      const newWebhooks = new Map(prev.webhooks);
-      newWebhooks.set(id, { ...webhook, ...updates, updatedAt: Date.now() });
-      return { ...prev, webhooks: newWebhooks };
-    });
-  }, []);
-
-  const deleteWebhook = useCallback((id: string) => {
-    setState(prev => {
-      const newWebhooks = new Map(prev.webhooks);
-      newWebhooks.delete(id);
-      return { ...prev, webhooks: newWebhooks };
-    });
-  }, []);
-
-  const toggleWebhook = useCallback((id: string, enabled: boolean) => {
-    setState(prev => {
-      const webhook = prev.webhooks.get(id);
-      if (!webhook) return prev;
-      const newWebhooks = new Map(prev.webhooks);
-      newWebhooks.set(id, { ...webhook, enabled, updatedAt: Date.now() });
-      return { ...prev, webhooks: newWebhooks };
-    });
-  }, []);
-
-  const getAllWebhooks = () => Array.from(state.webhooks.values());
-  const getWebhooksByEvent = (event: string) => 
-    Array.from(state.webhooks.values()).filter(w => w.enabled && w.events.includes(event));
-
-  return {
-    webhooks: state.webhooks,
-    deliveryLogs: state.deliveryLogs,
-    createWebhook,
-    updateWebhook,
-    deleteWebhook,
-    toggleWebhook,
-    getAllWebhooks,
-    getWebhooksByEvent,
-    sendWebhook: async (event: string, data: any) => {
-      const webhooks = getWebhooksByEvent(event);
-      // 实际发送逻辑省略
-    },
-    testWebhook: async (id: string) => {
-      // 测试逻辑
-    },
-    getDeliveryLogs: (webhookId?: string, limit = 100) => {
-      let logs = state.deliveryLogs;
-      if (webhookId) logs = logs.filter(l => l.webhookId === webhookId);
-      return logs.slice(0, limit);
-    },
-    clearLogs: (webhookId?: string) => {
-      setState(prev => ({
-        ...prev,
-        deliveryLogs: webhookId 
-          ? prev.deliveryLogs.filter(l => l.webhookId !== webhookId)
-          : [],
-      });
-    },
-    retryFailed: async (logId: string) => {
-      // 重试逻辑
-    },
   };
 }

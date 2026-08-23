@@ -6,6 +6,10 @@ interface EditorState {
   // Project state
   currentProject: Project | null;
   setCurrentProject: (project: Project | null) => void;
+
+  // Language service mode
+  mode: 'monaco' | 'lsp' | 'hybrid';
+  setMode: (mode: 'monaco' | 'lsp' | 'hybrid') => void;
   
   // File tree state
   files: ProjectFile[];
@@ -116,7 +120,10 @@ export const useEditorStore = create<EditorState>()(
     (set, get) => ({
       currentProject: null,
       setCurrentProject: (project) => set({ currentProject: project }),
-      
+
+      mode: 'hybrid',
+      setMode: (mode) => set({ mode }),
+
       files: [],
       setFiles: (files) => set({ files }),
       addFile: (file) => set((state) => ({ files: [...state.files, file] })),
@@ -211,6 +218,61 @@ export const useEditorStore = create<EditorState>()(
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,
       }),
+    }
+  )
+);
+
+interface EditorSettings {
+  mathRenderer: 'katex' | 'mathjax' | 'auto';
+  mermaidEnabled: boolean;
+  fontSize: number;
+  tabSize: number;
+  wordWrap: boolean;
+  minimap: boolean;
+  lineNumbers: boolean;
+  autoSave: boolean;
+  theme: string;
+}
+
+interface EditorSettingsState {
+  settings: EditorSettings;
+  updateSettings: (updates: Partial<EditorSettings>) => void;
+  resetSettings: () => void;
+}
+
+export const useEditorSettings = create<EditorSettingsState>()(
+  persist(
+    (set) => ({
+      settings: {
+        mathRenderer: 'katex' as 'katex' | 'mathjax' | 'auto',
+        mermaidEnabled: true,
+        fontSize: 14,
+        tabSize: 4,
+        wordWrap: true,
+        minimap: false,
+        lineNumbers: true,
+        autoSave: true,
+        theme: 'dark' as string,
+      },
+      updateSettings: (updates) =>
+        set((state) => ({ settings: { ...state.settings, ...updates } })),
+      resetSettings: () =>
+        set({
+          settings: {
+            mathRenderer: 'katex',
+            mermaidEnabled: true,
+            fontSize: 14,
+            tabSize: 4,
+            wordWrap: true,
+            minimap: false,
+            lineNumbers: true,
+            autoSave: true,
+            theme: 'dark',
+          },
+        }),
+    }),
+    {
+      name: 'editor-settings',
     }
   )
 );

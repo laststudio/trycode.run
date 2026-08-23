@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { LSPWSMessage, LSPWSError } from '../../types/lsp';
+import { LSPWSMessage } from '../types/lsp';
 
 // LSP 客户端 Hook
 export function useLSPClient(languageId?: string) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [requestId, setRequestId] = useState(0);
   const pendingRequests = useRef<Map<number, (result: any) => void>>(new Map());
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const reconnectDelay = 2000;
+  let lastLanguageId = languageId;
 
   // 连接到 LSP WebSocket
   const connect = useCallback(async (lang: string) => {
@@ -50,14 +50,15 @@ export function useLSPClient(languageId?: string) {
       ws.onclose = (event) => {
         setConnected(false);
         console.log(`LSP WebSocket closed: ${event.code} ${event.reason}`);
-        
+
         // 自动重连
-        if (reconnectAttempts.current < 5) {
+        if (reconnectAttempts.current < maxReconnectAttempts) {
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
-            // 这里需要重新连接，但需要语言 ID
-            // 实际实现中需要保存 languageId
-          }, 2000 * Math.pow(2, reconnectAttempts.current));
+            if (lastLanguageId) {
+              connect(lastLanguageId);
+            }
+          }, reconnectDelay * Math.pow(2, reconnectAttempts.current));
         }
       };
     } catch (error) {
@@ -69,17 +70,20 @@ export function useLSPClient(languageId?: string) {
   // 处理接收到的消息
   const handleMessage = useCallback((message: LSPWSMessage) => {
     switch (message.type) {
-      case 'response':
-        const pending = pendingRequests.current.get(message.request_id);
+      case 'response': {
+        const rid = message.request_id;
+        if (rid === undefined) break;
+        const pending = pendingRequests.current.get(rid);
         if (pending) {
-          pendingRequests.current.delete(message.request_id);
+          pendingRequests.current.delete(rid);
           if (message.error) {
-            pending((err: any) => { throw new Error(message.error?.message || 'LSP error') });
+            console.error('LSP request error:', message.error.message || 'LSP error');
           } else {
             pending(message.result);
           }
         }
         break;
+      }
       case 'notification':
         // 处理通知（诊断、日志等）
         console.log('LSP notification:', message.method, message.params);
@@ -101,7 +105,7 @@ export function useLSPClient(languageId?: string) {
     }
 
     const requestId = Date.now() + Math.random();
-    
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         pendingRequests.current.delete(requestId);
@@ -113,22 +117,15 @@ export function useLSPClient(languageId?: string) {
         resolve(result);
       });
 
-      const message: LSPWSMessage = {
-        type: 'request',
-        request_id: Date.now(),
-        language_id: '', // 这里需要填入语言 ID
-        method,
-        params,
-      };
-
       wsRef.current?.send(JSON.stringify({
         type: 'request',
-        request_id: Date.now(),
-        language_id: '', // 需要实际的语言 ID
+        request_id: requestId,
+        language_id: languageId || '',
         method,
         params,
       }));
-    }, []);
+    });
+  }, [languageId]);
 
   // 发送通知
   const sendNotification = useCallback(async (method: string, params?: any) => {
@@ -176,51 +173,3 @@ export function useLSPClient(languageId?: string) {
     sendNotification,
   };
 };
-
-// LSP 多路复用器 Hook
-export function useLSPMultiplexer() {
-  const [clients, setClients] = useState<Map<string, any>>(new Map());
-  const [globalMode, setGlobalMode] = useState<'monaco' | 'lsp' | 'hybrid'>('hybrid');
-
-  // 获取客户端
-  const getClient = useCallback((languageId: string) => {
-    // 实际实现中从多路复用器获取客户端
-    return null;
-  }, []);
-
-  // 启动客户端
-  const startClient = useCallback(async (languageId: string) => {
-    // 实际实现中启动 LSP 客户端
-  }, []);
-
-  // 停止客户端
-  const stopClient = useCallback(async (languageId: string) => {
-    // 实际实现中停止 LSP 客户端
-  }, []);
-
-  // 重启客户端
-  const restartClient = useCallback(async (languageId: string) => {
-    // 实际实现中重启客户端
-  }, []);
-
-  // 获取所有客户端状态
-  const getAllStatus = useCallback(async () => {
-    // 实际实现中获取所有客户端状态
-    return [];
-  }, []);
-
-  // 设置全局模式
-  const setGlobalMode = useCallback((mode: 'monaco' | 'lsp' | 'hybrid') => {
-    setGlobalMode(mode);
-  }, []);
-
-  return {
-    globalMode,
-    setGlobalMode,
-    getClient,
-    startClient,
-    stopClient,
-    restartClient,
-    getAllStatus,
-  };
-}

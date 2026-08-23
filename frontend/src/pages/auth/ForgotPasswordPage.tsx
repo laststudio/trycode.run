@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EnvelopeIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, ArrowRightIcon } from '../../utils/icons.ts';
 import { useAuth } from '../../hooks/useAuth';
 import { useUIStore } from '../../stores';
 import clsx from 'clsx';

@@ -12,7 +12,7 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   ChevronDownIcon,
-} from '@heroicons/react/24/outline';
+} from '../../utils/icons.ts';
 import { useAuth } from '../../hooks/useAuth';
 import { AdminState, get_system_config, get_system_status, get_admin_stats, list_audit_logs, list_executions_admin, list_users_admin, test_smtp, test_captcha, test_oauth, test_database, initialize_super_admin, trigger_config_reload } from '../../api/admin';
 import clsx from 'clsx';

@@ -175,37 +175,34 @@ pub fn docker_host_config_for_gvisor(
     pids_limit: i64,
     disk_bytes: i64,
 ) -> bollard::models::HostConfig {
-    use bollard::models::{Mount, MountTypeEnum, Resources, Ulimit};
+    use bollard::models::{Mount, MountTypeEnum, MountTmpfsOptions, ResourcesUlimits};
 
     bollard::models::HostConfig {
-        resources: Some(Resources {
-            cpu_quota: Some(cpu_quota),
-            memory: Some(memory_bytes),
-            pids_limit: Some(pids_limit),
-            ..Default::default()
-        }),
+        cpu_quota: Some(cpu_quota),
+        memory: Some(memory_bytes),
+        pids_limit: Some(pids_limit),
         mounts: Some(vec![Mount {
             target: Some("/workspace".to_string()),
             source: Some("workspace".to_string()),
             typ: Some(MountTypeEnum::TMPFS),
-            tmpfs: Some(bollard::models::TmpfsOptions {
-                size_bytes: Some(disk_bytes as u64),
-                mode: Some("1777".to_string()),
+            tmpfs_options: Some(MountTmpfsOptions {
+                size_bytes: Some(disk_bytes),
+                mode: Some(1777),
             }),
             ..Default::default()
         }]),
         network_mode: Some("none".to_string()), // gVisor handles network isolation
-        read_only: Some(true),
+        readonly_rootfs: Some(true),
         security_opt: Some(vec!["no-new-privileges:true".to_string()]),
         cap_drop: Some(vec!["ALL".to_string()]),
         cap_add: Some(vec!["SYS_PTRACE".to_string()]),
         ulimits: Some(vec![
-            Ulimit {
+            ResourcesUlimits {
                 name: Some("nofile".to_string()),
                 soft: Some(1024),
                 hard: Some(1024),
             },
-            Ulimit {
+            ResourcesUlimits {
                 name: Some("nproc".to_string()),
                 soft: Some(pids_limit),
                 hard: Some(pids_limit),

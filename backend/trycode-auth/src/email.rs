@@ -1,124 +1,101 @@
 use lettre::{
-    transport::smtp::authentication::Credentials,
-    transport::smtp::client::{Tls, TlsParameters},
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message,
+    Tokio1Executor,
 };
-use secrecy::ExposeSecret;
 use std::sync::Arc;
-use tera::{Context, Tera};
-use tracing::{error, info};
+use tracing::{info, warn};
 
-use crate::config::SmtpConfig;
+use trycode_core::config::SmtpConfig;
 
 #[derive(Clone)]
 pub struct EmailService {
-    mailer: AsyncSmtpTransport<Tokio1Executor>,
+    mailer: Option<Arc<AsyncSmtpTransport<Tokio1Executor>>>,
     from: String,
-    templates: Arc<Tera>,
 }
 
 impl EmailService {
     pub fn new(config: SmtpConfig) -> anyhow::Result<Self> {
-        let creds = Credentials::new(config.username.clone(), config.password.expose_secret().to_string());
-
-        let tls = match config.tls {
-            crate::config::SmtpTlsMode::None => None,
-            crate::config::SmtpTlsMode::Starttls => Some(TlsParameters::new(config.host.clone())?),
-            crate::config::SmtpTlsMode::Tls => Some(TlsParameters::new(config.host.clone())?),
-        };
-
-        let mut builder = AsyncSmtpTransport::<Tokio1Executor>::relay(&config.host)?
-            .port(config.port)
-            .credentials(creds);
-
-        if let Some(tls) = tls {
-            builder = builder.tls(tls);
+        if config.host.is_empty() {
+            // SMTP 未配置时返回禁用状态的服务（发送时记录警告）
+            return Ok(Self { mailer: None, from: config.from });
         }
 
-        let mailer = builder.build();
+        let creds = Credentials::new(config.username.clone(), config.password.clone());
 
-        let mut templates = Tera::default();
-        templates.add_raw_template("verification", include_str!("../../templates/verification.html"))?;
-        templates.add_raw_template("password_reset", include_str!("../../templates/password_reset.html"))?;
-        templates.add_raw_template("welcome", include_str!("../../templates/welcome.html"))?;
+        let builder = if config.port == 465 {
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&config.host)?
+        } else {
+            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)?
+        };
+
+        let mailer = builder.port(config.port).credentials(creds).build();
 
         Ok(Self {
-            mailer,
+            mailer: Some(Arc::new(mailer)),
             from: config.from,
-            templates: Arc::new(templates),
+        })
+    }
+
+    fn make_email(&self, to: &str, subject: &str, html: String) -> anyhow::Result<Message> {
+        Ok(Message::builder()
+            .from(self.from.parse()?)
+            .to(to.parse()?)
+            .subject(subject)
+            .header(lettre::message::header::ContentType::TEXT_HTML)
+            .body(html)?)
+    }
+
+    async fn send(&self, email: Message) -> anyhow::Result<()> {
+        match &self.mailer {
+            Some(mailer) => {
+                mailer.send(email).await?;
+                Ok(())
+            }
+            None => {
+                warn!("SMTP not configured; skipping email send");
+                Ok(())
+            }
         }
     }
 
-    pub async fn send_verification_code(&self, to: &str, code: &str, purpose: &str) -> anyhow::Result<()> {
-        let mut context = Context::new();
-        context.insert("code", code);
-        context.insert("purpose", purpose);
-        context.insert("expires_minutes", "10");
-
-        let html = self.templates.render("verification", &context)?;
-
-        let email = Message::builder()
-            .from(self.from.parse()?)
-            .to(to.parse()?)
-            .subject("TryCode - Your Verification Code")
-            .html(html)
-            .body(String::new())?;
-
-        self.mailer.send(email).await?;
+    pub async fn send_verification_code(
+        &self,
+        to: &str,
+        code: &str,
+        purpose: &str,
+    ) -> anyhow::Result<()> {
+        let html = format!(
+            "<h2>TryCode 验证码</h2><p>您正在进行 <b>{purpose}</b> 操作，验证码为：</p>\
+             <p style=\"font-size:32px;font-weight:bold;letter-spacing:8px;\">{code}</p>\
+             <p>验证码 10 分钟内有效。如非本人操作请忽略此邮件。</p>"
+        );
+        let email = self.make_email(to, "TryCode - 验证码", html)?;
+        self.send(email).await?;
         info!("Verification email sent to {}", to);
         Ok(())
     }
 
     pub async fn send_password_reset(&self, to: &str, reset_link: &str) -> anyhow::Result<()> {
-        let mut context = Context::new();
-        context.insert("reset_link", reset_link);
-        context.insert("expires_hours", "1");
-
-        let html = self.templates.render("password_reset", &context)?;
-
-        let email = Message::builder()
-            .from(self.from.parse()?)
-            .to(to.parse()?)
-            .subject("TryCode - Password Reset Request")
-            .html(html)
-            .body(String::new())?;
-
-        self.mailer.send(email).await?;
+        let html = format!(
+            "<h2>TryCode 密码重置</h2><p>您请求了密码重置，请点击以下链接：</p>\
+             <p><a href=\"{reset_link}\">{reset_link}</a></p>\
+             <p>链接 1 小时内有效。如非本人操作请忽略此邮件。</p>"
+        );
+        let email = self.make_email(to, "TryCode - 密码重置", html)?;
+        self.send(email).await?;
         info!("Password reset email sent to {}", to);
         Ok(())
     }
 
     pub async fn send_welcome(&self, to: &str, name: &str) -> anyhow::Result<()> {
-        let mut context = Context::new();
-        context.insert("name", name);
-
-        let html = self.templates.render("welcome", &context)?;
-
-        let email = Message::builder()
-            .from(self.from.parse()?)
-            .to(to.parse()?)
-            .subject("Welcome to TryCode!")
-            .html(html)
-            .body(String::new())?;
-
-        self.mailer.send(email).await?;
+        let html = format!(
+            "<h2>欢迎加入 TryCode，{name}！</h2>\
+             <p>您的账号已激活，现在可以开始编写和运行代码了。</p>\
+             <p><a href=\"https://trycode.run\">访问 TryCode</a></p>"
+        );
+        let email = self.make_email(to, "TryCode - 欢迎加入", html)?;
+        self.send(email).await?;
         info!("Welcome email sent to {}", to);
         Ok(())
     }
-
-    pub async fn test_connection(&self) -> anyhow::Result<()> {
-        // Just test by trying to connect
-        let test_email = Message::builder()
-            .from(self.from.parse()?)
-            .to(self.from.parse()?)
-            .subject("TryCode SMTP Test")
-            .body("SMTP connection test successful".to_string())?;
-
-        self.mailer.send(test_email).await?;
-        Ok(())
-    }
-}
-
-pub fn create_email_service(config: SmtpConfig) -> anyhow::Result<Arc<EmailService>> {
-    Ok(Arc::new(EmailService::new(config)?))
 }

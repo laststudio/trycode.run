@@ -295,9 +295,7 @@ const rustSnippets = [
   },
 ];
 
-export function createRustCompletionProvider(monaco: typeof monaco) {
-  const allKeywords = rustKeywords;
-  const allSnippets = rustSnippets;
+export function createRustCompletionProvider(monacoInstance: typeof monaco) {
 
   return {
     triggerCharacters: ['.', ':', '(', '[', '"', "'", ' ', '\t', ':', '?', '#', '[', '{'],
@@ -354,7 +352,7 @@ export function createRustCompletionProvider(monaco: typeof monaco) {
 
       return { suggestions };
     },
-    resolveCompletionItem: (item) => item,
+    resolveCompletionItem: (item: monaco.languages.CompletionItem) => item,
   };
 }
 

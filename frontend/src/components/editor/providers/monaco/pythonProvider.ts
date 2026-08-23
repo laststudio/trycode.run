@@ -1,5 +1,4 @@
 import * as monaco from 'monaco-editor';
-import { BaseProviderFactory } from './BaseProviderFactory';
 
 const pythonKeywords = [
   'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
@@ -179,7 +178,7 @@ const pythonSnippets = [
 ];
 
 export class PythonProviderFactory {
-  static createCompletionProvider(monaco: typeof monaco): monaco.languages.CompletionItemProvider {
+  static createCompletionProvider(monacoInstance: typeof monaco): monaco.languages.CompletionItemProvider {
     return {
       triggerCharacters: ['.', '(', '[', '"', "'", '@', '#', ' ', '\t'],
       provideCompletionItems: (model: monaco.editor.ITextModel, position: monaco.Position) => {
@@ -244,11 +243,11 @@ export class PythonProviderFactory {
     };
   }
 
-  static createHoverProvider(monaco: typeof monaco): monaco.languages.HoverProvider {
+  static createHoverProvider(monacoInstance: typeof monaco): monaco.languages.HoverProvider {
     return {
       provideHover: (model: monaco.editor.ITextModel, position: monaco.Position) => {
         const word = model.getWordAtPosition(position);
-        if (!word) return null;
+        if (!word) return undefined;
 
         const wordText = word.word;
 
@@ -294,16 +293,16 @@ export class PythonProviderFactory {
           };
         }
 
-        return null;
+        return undefined;
       },
     };
   }
 
-  static createDefinitionProvider(monaco: typeof monaco): monaco.languages.DefinitionProvider {
+  static createDefinitionProvider(monacoInstance: typeof monaco): monaco.languages.DefinitionProvider {
     return {
       provideDefinition: (model: monaco.editor.ITextModel, position: monaco.Position) => {
         const word = model.getWordAtPosition(position);
-        if (!word) return null;
+        if (!word) return undefined;
 
         // 简单实现：查找定义
         const text = model.getValue();
@@ -328,20 +327,20 @@ export class PythonProviderFactory {
           }
         }
 
-        return null;
+        return undefined;
       },
     };
   }
 
-  static createSignatureHelpProvider(monaco: typeof monaco): monaco.languages.SignatureHelpProvider {
+  static createSignatureHelpProvider(monacoInstance: typeof monaco): monaco.languages.SignatureHelpProvider {
     return {
       signatureHelpTriggerCharacters: ['(', ','],
       provideSignatureHelp: (model: monaco.editor.ITextModel, position: monaco.Position) => {
         const word = model.getWordAtPosition(position);
-        if (!word) return null;
+        if (!word) return undefined;
 
         // 常用内置函数签名
-        const signatures: Record<string, monaco.languages.SignatureInformation[]> = {
+        const signatureMap: Record<string, monaco.languages.SignatureInformation[]> = {
           'print': [{
             label: 'print(*objects, sep=" ", end="\\n", file=sys.stdout, flush=False)',
             documentation: 'Print objects to the text stream file.',
@@ -371,19 +370,6 @@ export class PythonProviderFactory {
             documentation: 'Return the length of an object.',
             parameters: [{ label: 'obj', documentation: 'Sized object' }],
           }],
-          'range': [{
-            label: 'range(stop)',
-            documentation: 'Return a range object from 0 to stop-1.',
-            parameters: [{ label: 'stop', documentation: 'End of range (exclusive)' }],
-          }, {
-            label: 'range(start, stop[, step])',
-            documentation: 'Return a range object from start to stop-1.',
-            parameters: [
-              { label: 'start', documentation: 'Start of range (inclusive)' },
-              { label: 'stop', documentation: 'End of range (exclusive)' },
-              { label: 'step=1', documentation: 'Step size' },
-            ],
-          }],
           'open': [{
             label: 'open(file, mode="r", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None)',
             documentation: 'Open file and return a file object.',
@@ -405,137 +391,19 @@ export class PythonProviderFactory {
           }],
         };
 
-        const signatures = signatures[word.word];
-        if (signatures) {
+        const sigs = signatureMap[word.word];
+        if (sigs) {
           return {
             value: {
               activeSignature: 0,
               activeParameter: 0,
-              signatures,
+              signatures: sigs,
             },
+            dispose: () => {},
           };
         }
 
-        return null;
-      },
-    };
-  }
-
-  static createDefinitionProvider(monaco: typeof monaco): monaco.languages.DefinitionProvider {
-    return {
-      provideDefinition: (model: monaco.editor.ITextModel, position: monaco.Position) => {
-        const word = model.getWordAtPosition(position);
-        if (!word) return null;
-
-        const text = model.getValue();
-        const wordText = word.word;
-
-        const patterns = [
-          new RegExp(`^\\s*def\\s+${wordText}\\s*\\(`, 'gm'),
-          new RegExp(`^\\s*class\\s+${wordText}\\s*[\(:]`),
-          new RegExp(`^\\s*${wordText}\\s*=`),
-          new RegExp(`^\\s*(?:async\\s+)?def\\s+${wordText}\\s*\\(`),
-        ];
-
-        for (const pattern of patterns) {
-          let match;
-          while ((match = pattern.exec(text)) !== null) {
-            const lineNumber = text.substring(0, match.index).split('\n').length;
-            return [{
-              uri: model.uri,
-              range: new monaco.Range(lineNumber, 1, lineNumber, match[0].length + 1),
-            }];
-          }
-        }
-
-        return null;
-      },
-    };
-  }
-
-  static createSignatureHelpProvider(monaco: typeof monaco): monaco.languages.SignatureHelpProvider {
-    return {
-      signatureHelpTriggerCharacters: ['(', ','],
-      provideSignatureHelp: (model: monaco.editor.ITextModel, position: monaco.Position) => {
-        const word = model.getWordAtPosition(position);
-        if (!word) return null;
-
-        const signatures: Record<string, monaco.languages.SignatureInformation[]> = {
-          'print': [{
-            label: 'print(*objects, sep=" ", end="\\n", file=sys.stdout, flush=False)',
-            documentation: 'Print objects to the text stream file.',
-            parameters: [
-              { label: '*objects', documentation: 'Objects to print' },
-              { label: 'sep=" "', documentation: 'Separator between objects' },
-              { label: 'end="\\n"', documentation: 'String appended after last value' },
-              { label: 'file=sys.stdout', documentation: 'File-like object' },
-              { label: 'flush=False', documentation: 'Whether to flush' },
-            ],
-          }],
-          'range': [{
-            label: 'range(stop)',
-            documentation: 'Return a range object from 0 to stop-1.',
-            parameters: [{ label: 'stop', documentation: 'End of range (exclusive)' }],
-          }, {
-            label: 'range(start, stop[, step])',
-            documentation: 'Return a range object from start to stop-1.',
-            parameters: [
-              { label: 'start', documentation: 'Start of range (inclusive)' },
-              { label: 'stop', documentation: 'End of range (exclusive)' },
-              { label: 'step=1', documentation: 'Step size' },
-            ],
-          }],
-          'len': [{
-            label: 'len(obj)',
-            documentation: 'Return the length of an object.',
-            parameters: [{ label: 'obj', documentation: 'Sized object' }],
-          }],
-          'range': [{
-            label: 'range(stop)',
-            documentation: 'Return a range object from 0 to stop-1.',
-            parameters: [{ label: 'stop', documentation: 'End of range (exclusive)' }],
-          }, {
-            label: 'range(start, stop[, step])',
-            documentation: 'Return a range object from start to stop-1.',
-            parameters: [
-              { label: 'start', documentation: 'Start of range (inclusive)' },
-              { label: 'stop', documentation: 'End of range (exclusive)' },
-              { label: 'step=1', documentation: 'Step size' },
-            ],
-          }],
-          'open': [{
-            label: 'open(file, mode="r", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None)',
-            documentation: 'Open file and return a file object.',
-            parameters: [
-              { label: 'file', documentation: 'Path-like object' },
-              { label: 'mode="r"', documentation: 'Mode (r, w, a, etc.)' },
-              { label: 'buffering=-1', documentation: 'Buffering policy' },
-              { label: 'encoding=None', documentation: 'Text encoding' },
-              { label: 'errors=None', documentation: 'Error handling' },
-            ],
-          }],
-          'isinstance': [{
-            label: 'isinstance(obj, classinfo)',
-            documentation: 'Return whether object is an instance of class.',
-            parameters: [
-              { label: 'obj', documentation: 'Object to check' },
-              { label: 'classinfo', documentation: 'Class or tuple of classes' },
-            ],
-          }],
-        };
-
-        const signatures = signatures[word.word];
-        if (signatures) {
-          return {
-            value: {
-              activeSignature: 0,
-              activeParameter: 0,
-              signatures,
-            },
-          };
-        }
-
-        return null;
+        return undefined;
       },
     };
   }

@@ -176,7 +176,7 @@ const pythonSnippets = [
 /**
  * 创建 Python Monaco 补全提供者
  */
-export function createPythonCompletionProvider(monaco: typeof monaco) {
+export function createPythonCompletionProvider(monacoInstance: typeof monaco) {
   return {
     triggerCharacters: ['.', '(', '[', '"', "'", '@', '#', ' ', '\t'],
     provideCompletionItems: (model: monaco.editor.ITextModel, position: monaco.Position) => {
@@ -247,7 +247,7 @@ export function createPythonCompletionProvider(monaco: typeof monaco) {
 /**
  * 创建 Python 悬停提供者
  */
-export function createPythonHoverProvider(monaco: typeof monaco) {
+export function createPythonHoverProvider(monacoInstance: typeof monaco) {
   return {
     provideHover: (model: monaco.editor.ITextModel, position: monaco.Position) => {
       const word = model.getWordAtPosition(position);
@@ -369,7 +369,7 @@ function getBuiltinDoc(func: string): string {
 /**
  * 创建 Python 定义跳转提供者
  */
-export function createPythonDefinitionProvider(monaco: typeof monaco) {
+export function createPythonDefinitionProvider(monacoInstance: typeof monaco) {
   return {
     provideDefinition: (model: monaco.editor.ITextModel, position: monaco.Position) => {
       const word = model.getWordAtPosition(position);
@@ -406,7 +406,7 @@ export function createPythonDefinitionProvider(monaco: typeof monaco) {
 /**
  * 创建 Python 签名帮助提供者
  */
-export function createPythonSignatureHelpProvider(monaco: typeof monaco) {
+export function createPythonSignatureHelpProvider(monacoInstance: typeof monaco) {
   return {
     signatureHelpTriggerCharacters: ['(', ','],
     provideSignatureHelp: (model: monaco.editor.ITextModel, position: monaco.Position) => {

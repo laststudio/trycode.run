@@ -3,18 +3,17 @@ use axum::{
     http::StatusCode,
     response::{Html, Redirect},
 };
-use oauth2::{
-    basic::BasicClient, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier,
-    RedirectUrl, Scope, TokenResponse, TokenUrl,
-};
-use oauth2::reqwest::async_http_client;
-use secrecy::ExposeSecret;
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::Deserialize;
-use sqlx::PgPool;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::{config::GitHubOAuthConfig, jwt::{create_access_token, create_refresh_token, hash_verification_code, Claims, JwtConfig}, models::{AuthResponse, User, UserRole}, routes::AuthState};
+use crate::{
+    jwt::{create_access_token, create_refresh_token, hash_verification_code},
+    models::User,
+    routes::{set_auth_cookies, AuthState},
+};
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct OAuthCallbackQuery {
@@ -24,16 +23,6 @@ pub struct OAuthCallbackQuery {
     error_description: Option<String>,
 }
 
-pub fn create_github_client(config: &GitHubOAuthConfig) -> BasicClient {
-    BasicClient::new(
-        ClientId::new(config.client_id.clone()),
-        Some(ClientSecret::new(config.client_secret.expose_secret().to_string())),
-        AuthUrl::new("https://github.com/login/oauth/authorize".to_string()).unwrap(),
-        Some(TokenUrl::new("https://github.com/login/oauth/access_token".to_string()).unwrap()),
-    )
-    .set_redirect_uri(RedirectUrl::new(config.redirect_url.clone()).unwrap())
-}
-
 pub async fn github_login(
     State(state): State<Arc<AuthState>>,
 ) -> Result<Redirect, StatusCode> {
@@ -41,22 +30,18 @@ pub async fn github_login(
         return Err(StatusCode::NOT_FOUND);
     }
 
-    let client = create_github_client(&state.config.oauth.github);
-    let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-    let (auth_url, csrf_token) = client
-        .authorize_url(CsrfToken::new_random)
-        .add_scope(Scope::new("read:user".to_string()))
-        .add_scope(Scope::new("user:email".to_string()))
-        .set_pkce_challenge(pkce_challenge)
-        .url();
+    // 简化实现：state 参数携带随机 nonce（生产建议配合 Redis 存储 CSRF）
+    let nonce = Uuid::new_v4();
+    let encoded_state = URL_SAFE_NO_PAD.encode(format!("trycode:{nonce}"));
 
-    // Store PKCE verifier and CSRF token in session/redis with short TTL
-    // For simplicity, we'll encode them in the state parameter
-    let state_data = format!("{}:{}", csrf_token.secret(), pkce_verifier.secret());
-    let encoded_state = base64::encode(state_data);
+    let auth_url = format!(
+        "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope=read:user%20user:email&state={}",
+        state.config.oauth.github.client_id,
+        urlencoding::encode(&state.config.oauth.github.redirect_url),
+        encoded_state,
+    );
 
-    let auth_url_with_state = format!("{}&state={}", auth_url, encoded_state);
-    Ok(Redirect::to(&auth_url_with_state))
+    Ok(Redirect::to(&auth_url))
 }
 
 pub async fn github_callback(
@@ -75,69 +60,84 @@ pub async fn github_callback(
         return Ok((jar, Html(oauth_error_page(&format!("{}: {}", error, desc)))));
     }
 
-    let code = query.code.ok_or_else(|| (StatusCode::BAD_REQUEST, "Missing code".to_string()))?;
-    let state_param = query.state.ok_or_else(|| (StatusCode::BAD_REQUEST, "Missing state".to_string()))?;
+    let code = query
+        .code
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "Missing code".to_string()))?;
 
-    // Decode state to get CSRF token and PKCE verifier
-    let decoded = base64::decode(&state_param)
-        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid state".to_string()))?;
-    let state_str = String::from_utf8(decoded)
-        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid state encoding".to_string()))?;
-
-    let parts: Vec<&str> = state_str.split(':').collect();
-    if parts.len() != 2 {
-        return Err((StatusCode::BAD_REQUEST, "Invalid state format".to_string()));
+    // Exchange code for token (直接调用 GitHub API)
+    let client = reqwest::Client::new();
+    #[derive(Deserialize)]
+    struct TokenResponse {
+        access_token: Option<String>,
+        error_description: Option<String>,
     }
 
-    let _csrf_token = parts[0];
-    let pkce_verifier = PkceCodeVerifier::new(parts[1].to_string());
-
-    let client = create_github_client(&state.config.oauth.github);
-
-    // Exchange code for token
-    let token_result = client
-        .exchange_code(AuthorizationCode::new(code))
-        .set_pkce_verifier(pkce_verifier)
-        .request_async(async_http_client)
+    let token_resp: TokenResponse = client
+        .post("https://github.com/login/oauth/access_token")
+        .header("Accept", "application/json")
+        .json(&serde_json::json!({
+            "client_id": state.config.oauth.github.client_id,
+            "client_secret": state.config.oauth.github.client_secret,
+            "code": code,
+            "redirect_uri": state.config.oauth.github.redirect_url,
+        }))
+        .send()
         .await
         .map_err(|e| {
             error!("Token exchange failed: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Token exchange failed".to_string())
+        })?
+        .json()
+        .await
+        .map_err(|e| {
+            error!("Token exchange parse failed: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Token exchange failed".to_string())
         })?;
 
-    let access_token = token_result.access_token().secret().to_string();
+    let access_token = token_resp.access_token.ok_or_else(|| {
+        let desc = token_resp.error_description.unwrap_or_default();
+        error!("GitHub token error: {}", desc);
+        (StatusCode::UNAUTHORIZED, "Token exchange denied".to_string())
+    })?;
 
     // Get user info from GitHub
-    let github_user = get_github_user(&access_token).await
-        .map_err(|e| {
-            error!("Failed to get GitHub user: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user info".to_string())
-        })?;
+    let github_user = get_github_user(&access_token).await.map_err(|e| {
+        error!("Failed to get GitHub user: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user info".to_string())
+    })?;
 
     // Check allowed domains
     if !state.config.oauth.github.allowed_domains.is_empty() {
         let email = github_user.email.as_deref().unwrap_or("");
-        let allowed = state.config.oauth.github.allowed_domains.iter().any(|d| email.ends_with(&format!("@{}", d)));
+        let allowed = state
+            .config
+            .oauth
+            .github
+            .allowed_domains
+            .iter()
+            .any(|d| email.ends_with(&format!("@{}", d)));
         if !allowed {
             return Ok((jar, Html(oauth_error_page("Email domain not allowed"))));
         }
     }
 
     // Check if OAuth account exists
-    let oauth_account = sqlx::query!(
-        "SELECT * FROM oauth_accounts WHERE provider = 'github' AND provider_user_id = $1",
-        github_user.id.to_string()
-    )
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| {
-        error!("DB error: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
-    })?;
+    let oauth_account: Option<(Uuid,)> =
+        sqlx::query_as(
+            "SELECT user_id FROM oauth_accounts WHERE provider = 'github' AND provider_user_id = $1",
+        )
+        .bind(github_user.id.to_string())
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            error!("DB error: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
+        })?;
 
-    let user = if let Some(account) = oauth_account {
+    let user = if let Some((existing_user_id,)) = oauth_account {
         // Existing OAuth account - get user
-        sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", account.user_id)
+        sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+            .bind(existing_user_id)
             .fetch_one(&state.db)
             .await
             .map_err(|e| {
@@ -146,30 +146,35 @@ pub async fn github_callback(
             })?
     } else if state.config.oauth.github.auto_create_user {
         // Create new user
-        let email = github_user.email.clone().unwrap_or_else(|| format!("github-{}@users.noreply.github.com", github_user.id));
-        
-        let existing_user = sqlx::query_as!(User, "SELECT * FROM users WHERE email = $1", email)
-            .fetch_optional(&state.db)
-            .await
-            .map_err(|e| {
-                error!("DB error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
-            })?;
+        let email = github_user
+            .email
+            .clone()
+            .unwrap_or_else(|| format!("github-{}@users.noreply.github.com", github_user.id));
 
-        let user = if let Some(user) = existing_user {
+        let existing_user: Option<User> =
+            sqlx::query_as("SELECT * FROM users WHERE email = $1")
+                .bind(&email)
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| {
+                    error!("DB error: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Database error".to_string())
+                })?;
+
+        if let Some(user) = existing_user {
             // Link OAuth account to existing user
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO oauth_accounts (user_id, provider, provider_user_id, provider_username, provider_email, access_token_encrypted, scope)
                 VALUES ($1, 'github', $2, $3, $4, $5, $6)
                 "#,
-                user.id,
-                github_user.id.to_string(),
-                github_user.login,
-                github_user.email,
-                access_token,
-                "read:user,user:email"
             )
+            .bind(user.id)
+            .bind(github_user.id.to_string())
+            .bind(&github_user.login)
+            .bind(&github_user.email)
+            .bind(&access_token)
+            .bind("read:user,user:email")
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -180,17 +185,17 @@ pub async fn github_callback(
         } else {
             // Create new user
             let user_id = Uuid::new_v4();
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO users (id, email, password_hash, name, role, status, email_verified, avatar_url)
                 VALUES ($1, $2, '', $3, $4, 'active', TRUE, $5)
                 "#,
-                user_id,
-                email,
-                github_user.name.unwrap_or(github_user.login.clone()),
-                state.config.oauth.github.default_role.to_string().to_lowercase(),
-                github_user.avatar_url
             )
+            .bind(user_id)
+            .bind(&email)
+            .bind(github_user.name.clone().unwrap_or_else(|| github_user.login.clone()))
+            .bind(state.config.oauth.github.default_role.to_string().to_lowercase())
+            .bind(&github_user.avatar_url)
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -198,18 +203,18 @@ pub async fn github_callback(
                 (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create user".to_string())
             })?;
 
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO oauth_accounts (user_id, provider, provider_user_id, provider_username, provider_email, access_token_encrypted, scope)
                 VALUES ($1, 'github', $2, $3, $4, $5, $6)
                 "#,
-                user_id,
-                github_user.id.to_string(),
-                github_user.login,
-                github_user.email,
-                access_token,
-                "read:user,user:email"
             )
+            .bind(user_id)
+            .bind(github_user.id.to_string())
+            .bind(&github_user.login)
+            .bind(&github_user.email)
+            .bind(&access_token)
+            .bind("read:user,user:email")
             .execute(&state.db)
             .await
             .map_err(|e| {
@@ -217,44 +222,54 @@ pub async fn github_callback(
                 (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create OAuth account".to_string())
             })?;
 
-            sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", user_id)
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(user_id)
                 .fetch_one(&state.db)
                 .await
                 .map_err(|e| {
                     error!("Failed to fetch new user: {}", e);
                     (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch user".to_string())
                 })?
-        };
-
-        user
+        }
     } else {
-        return Ok((jar, Html(oauth_error_page("Account not linked. Please register first."))));
+        return Ok((
+            jar,
+            Html(oauth_error_page("Account not linked. Please register first.")),
+        ));
     };
 
-    // Create JWT tokens
-    let access_token = create_access_token(user.id, user.email.clone(), user.role.to_string().to_lowercase(), &state.config.jwt)
-        .map_err(|e| {
-            error!("JWT creation failed: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Token creation failed".to_string())
-        })?;
+    let access_jwt = create_access_token(
+        user.id,
+        user.email.clone(),
+        user.role.to_string().to_lowercase(),
+        &state.config.jwt,
+    )
+    .map_err(|e| {
+        error!("JWT creation failed: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Token creation failed".to_string())
+    })?;
 
-    let refresh_token = create_refresh_token(user.id, user.email.clone(), user.role.to_string().to_lowercase(), &state.config.jwt)
-        .map_err(|e| {
-            error!("Refresh token creation failed: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Token creation failed".to_string())
-        })?;
+    let refresh_jwt = create_refresh_token(
+        user.id,
+        user.email.clone(),
+        user.role.to_string().to_lowercase(),
+        &state.config.jwt,
+    )
+    .map_err(|e| {
+        error!("Refresh token creation failed: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Token creation failed".to_string())
+    })?;
 
     // Store refresh token
-    let token_hash = hash_verification_code(&refresh_token);
-    sqlx::query!(
+    let token_hash = hash_verification_code(&refresh_jwt);
+    sqlx::query(
         r#"
         INSERT INTO sessions (user_id, token_hash, expires_at)
-        VALUES ($1, $2, NOW() + $3)
+        VALUES ($1, $2, NOW() + INTERVAL '7 days')
         "#,
-        user.id,
-        token_hash,
-        chrono::Duration::seconds(state.config.jwt.refresh_token_ttl_secs as i64)
     )
+    .bind(user.id)
+    .bind(token_hash)
     .execute(&state.db)
     .await
     .map_err(|e| {
@@ -263,26 +278,18 @@ pub async fn github_callback(
     })?;
 
     // Set cookies and redirect to frontend
-    let jar = crate::routes::set_auth_cookies(jar, &access_token, &refresh_token, &state.config.jwt);
-    
-    let html = format!(
-        r#"<!DOCTYPE html>
-        <html><head><title>Login Successful</title></head>
-        <body style="font-family: system-ui; text-align: center; padding: 50px;">
-            <h1>Login Successful</h1>
-            <p>Redirecting to TryCode...</p>
-            <script>window.location.href = "/";</script>
-        </body></html>"#
-    );
+    let jar = set_auth_cookies(jar, &access_jwt, &refresh_jwt, &state.config.jwt);
 
-    Ok((jar, Html(html)))
+    info!("GitHub OAuth login success for user {}", user.id);
+
+    Ok((jar, Html(login_success_page())))
 }
 
 async fn get_github_user(access_token: &str) -> anyhow::Result<GitHubUser> {
     let client = reqwest::Client::new();
-    
+
     // Get user profile
-    let user: GitHubUser = client
+    let mut user: GitHubUser = client
         .get("https://api.github.com/user")
         .bearer_auth(access_token)
         .header("User-Agent", "TryCode")
@@ -302,9 +309,8 @@ async fn get_github_user(access_token: &str) -> anyhow::Result<GitHubUser> {
             .json()
             .await?;
 
-        let primary = emails.iter().find(|e| e.primary && e.verified);
-        if let Some(email) = primary {
-            return Ok(GitHubUser { email: Some(email.email.clone()), ..user });
+        if let Some(email) = emails.iter().find(|e| e.primary && e.verified) {
+            user.email = Some(email.email.clone());
         }
     }
 
@@ -338,4 +344,15 @@ fn oauth_error_page(message: &str) -> String {
         </body></html>"#,
         message
     )
+}
+
+fn login_success_page() -> String {
+    r#"<!DOCTYPE html>
+    <html><head><title>Login Successful</title></head>
+    <body style="font-family: system-ui; text-align: center; padding: 50px;">
+        <h1>Login Successful</h1>
+        <p>Redirecting to TryCode...</p>
+        <script>window.location.href = "/";</script>
+    </body></html>"#
+    .to_string()
 }

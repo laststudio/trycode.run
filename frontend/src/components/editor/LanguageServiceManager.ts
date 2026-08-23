@@ -1,7 +1,4 @@
 import * as monaco from 'monaco-editor';
-import { useLSPClient } from '../../hooks/useLSPClient';
-import { useLSPMultiplexer } from '../../hooks/useLSPMultiplexer';
-import { LSPClient } from '../../types/lsp';
 
 // 语言配置导入
 import { pythonProviders, pythonLanguageConfig } from './languageConfigs/python';

@@ -9,7 +9,7 @@ import {
   GlobeAltIcon,
   DocumentArrowUpIcon,
   ArchiveBoxArrowDownIcon,
-} from '@heroicons/react/24/outline';
+} from './icons.ts';
 
 interface FileIconProps {
   className?: string;

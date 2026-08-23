@@ -352,7 +352,7 @@ const tsStdlib = [
 /**
  * 创建 TypeScript/JavaScript Monaco 补全提供者
  */
-export function createTypeScriptCompletionProvider(monaco: typeof monaco) {
+export function createTypeScriptCompletionProvider(monacoInstance: typeof monaco) {
   const allKeywords = [...tsKeywordsList, ...tsBuiltinTypesList];
   const allSnippets = tsSnippets;
 

@@ -24,8 +24,8 @@ export interface LanguageIntelliSenseConfig {
   foldingRange?: monaco.languages.FoldingRangeProvider;
   selectionRange?: monaco.languages.SelectionRangeProvider;
   linkedEditing?: monaco.languages.LinkedEditingRangeProvider;
-  callHierarchy?: monaco.languages.CallHierarchyProvider;
-  semanticTokens?: monaco.languages.SemanticTokensProvider;
+  callHierarchy?: any;
+  semanticTokens?: monaco.languages.DocumentSemanticTokensProvider;
   inlayHints?: monaco.languages.InlayHintsProvider;
 }
 

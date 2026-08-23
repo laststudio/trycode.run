@@ -1,10 +1,9 @@
 use async_trait::async_trait;
 use reqwest::Client;
-use secrecy::ExposeSecret;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 
-use crate::config::{CaptchaAction, CaptchaConfig, CaptchaProvider};
+use trycode_core::config::{CaptchaAction, CaptchaConfig, CaptchaProvider};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CaptchaError {
@@ -52,7 +51,7 @@ impl CaptchaVerifier for TryCapVerifier {
 
         let response = self.client
             .post(&self.config.verify_url)
-            .header("X-TryCap-Secret", self.config.secret_key.expose_secret())
+            .header("X-TryCap-Secret", self.config.secret_key.as_str())
             .json(&body)
             .send()
             .await?;
@@ -99,7 +98,7 @@ impl TurnstileVerifier {
 impl CaptchaVerifier for TurnstileVerifier {
     async fn verify(&self, token: &str, _action: Option<CaptchaAction>, ip: Option<String>) -> Result<bool, CaptchaError> {
         let mut body = HashMap::new();
-        body.insert("secret", self.config.secret_key.expose_secret().to_string());
+        body.insert("secret", self.config.secret_key.clone());
         body.insert("response", token.to_string());
         if let Some(ip) = ip {
             body.insert("remoteip", ip);
@@ -145,7 +144,7 @@ impl HCaptchaVerifier {
 impl CaptchaVerifier for HCaptchaVerifier {
     async fn verify(&self, token: &str, _action: Option<CaptchaAction>, ip: Option<String>) -> Result<bool, CaptchaError> {
         let mut body = HashMap::new();
-        body.insert("secret", self.config.secret_key.expose_secret().to_string());
+        body.insert("secret", self.config.secret_key.clone());
         body.insert("response", token.to_string());
         if let Some(ip) = ip {
             body.insert("remoteip", ip);
@@ -191,7 +190,7 @@ impl ReCaptchaV3Verifier {
 impl CaptchaVerifier for ReCaptchaV3Verifier {
     async fn verify(&self, token: &str, action: Option<CaptchaAction>, ip: Option<String>) -> Result<bool, CaptchaError> {
         let mut body = HashMap::new();
-        body.insert("secret", self.config.secret_key.expose_secret().to_string());
+        body.insert("secret", self.config.secret_key.clone());
         body.insert("response", token.to_string());
         if let Some(ip) = ip {
             body.insert("remoteip", ip);
@@ -227,7 +226,8 @@ impl CaptchaVerifier for ReCaptchaV3Verifier {
 }
 
 pub fn create_verifier(config: CaptchaConfig) -> Box<dyn CaptchaVerifier> {
-    match config.provider {
+    let provider = config.provider.clone();
+    match provider {
         CaptchaProvider::Trycap => Box::new(TryCapVerifier::new(config)),
         CaptchaProvider::Turnstile => Box::new(TurnstileVerifier::new(config)),
         CaptchaProvider::HCaptcha => Box::new(HCaptchaVerifier::new(config)),
@@ -236,7 +236,7 @@ pub fn create_verifier(config: CaptchaConfig) -> Box<dyn CaptchaVerifier> {
             // For custom, we'd need a generic HTTP verifier
             // For now, fall back to TryCap-like behavior
             let mut cfg = config;
-            cfg.verify_url = endpoint;
+            cfg.verify_url = endpoint.clone();
             Box::new(TryCapVerifier::new(cfg))
         }
     }

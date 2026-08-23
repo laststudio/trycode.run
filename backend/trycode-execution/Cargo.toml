@@ -5,12 +5,19 @@ edition = "2021"
 
 [dependencies]
 trycode-core = { path = "../trycode-core" }
+trycode-auth = { path = "../trycode-auth" }
+axum = { workspace = true }
 bollard = { workspace = true }
 tokio = { workspace = true }
-async-channel = { workspace = true }
 futures = { workspace = true }
 dashmap = { workspace = true }
+redis = { workspace = true }
+deadpool-redis = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = thiserror }
+serde_json = { workspace = true }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 tracing = { workspace = true }

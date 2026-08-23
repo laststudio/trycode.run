@@ -363,9 +363,7 @@ const goSnippets = [
   },
 ];
 
-export function createGoCompletionProvider(monaco: typeof monaco) {
-  const allKeywords = goKeywords;
-  const allSnippets = goSnippets;
+export function createGoCompletionProvider(monacoInstance: typeof monaco) {
 
   return {
     triggerCharacters: ['.', '(', '[', '"', "'", ' ', '\t', ':'],
@@ -422,7 +420,7 @@ export function createGoCompletionProvider(monaco: typeof monaco) {
 
       return { suggestions };
     },
-    resolveCompletionItem: (item) => item,
+    resolveCompletionItem: (item: monaco.languages.CompletionItem) => item,
   };
 }
 

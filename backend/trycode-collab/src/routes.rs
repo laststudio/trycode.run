@@ -21,12 +21,11 @@ pub async fn get_collab_document(
         return Err(CoreError::Forbidden("Access denied".to_string()));
     }
 
-    let doc = sqlx::query_as!(
-        CollabDocument,
+    let doc = sqlx::query_as::<_, CollabDocument>(
         "SELECT * FROM collab_documents WHERE project_id = $1 AND file_path = $2",
-        project_id,
-        file_path
     )
+    .bind(project_id)
+    .bind(file_path)
     .fetch_optional(&state.db)
     .await?
     .ok_or(CoreError::NotFound("Document not found".to_string()))?;
@@ -45,8 +44,7 @@ pub async fn create_collab_document(
         return Err(CoreError::Forbidden("Write access denied".to_string()));
     }
 
-    let doc = sqlx::query_as!(
-        CollabDocument,
+    let doc = sqlx::query_as::<_, CollabDocument>(
         r#"
         INSERT INTO collab_documents (project_id, file_path, ydoc_state, version)
         VALUES ($1, $2, $3, 0)
@@ -56,10 +54,10 @@ pub async fn create_collab_document(
             updated_at = NOW()
         RETURNING *
         "#,
-        project_id,
-        payload.file_path,
-        payload.initial_state
     )
+    .bind(project_id)
+    .bind(payload.file_path)
+    .bind(payload.initial_state)
     .fetch_one(&state.db)
     .await?;
 
@@ -73,21 +71,23 @@ pub struct CreateCollabDocumentRequest {
 }
 
 async fn check_project_access(db: &PgPool, project_id: Uuid, user: &trycode_auth::models::User) -> bool {
-    let project = sqlx::query!("SELECT owner_id, visibility FROM projects WHERE id = $1", project_id)
+    let project = sqlx::query_as::<_, (Uuid, String)>("SELECT owner_id, visibility FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(db)
         .await
         .ok()
         .flatten();
 
     if let Some(project) = project {
-        if project.owner_id == user.id {
+        if project.0 == user.id {
             return true;
         }
 
-        let collab = sqlx::query!(
+        let collab = sqlx::query(
             "SELECT 1 FROM project_collaborators WHERE project_id = $1 AND user_id = $2 AND accepted_at IS NOT NULL",
-            project_id, user.id
         )
+        .bind(project_id)
+        .bind(user.id)
         .fetch_optional(db)
         .await
         .ok()
@@ -97,7 +97,7 @@ async fn check_project_access(db: &PgPool, project_id: Uuid, user: &trycode_auth
             return true;
         }
 
-        if project.visibility == "public" {
+        if project.1 == "public" {
             return true;
         }
     }
@@ -106,21 +106,23 @@ async fn check_project_access(db: &PgPool, project_id: Uuid, user: &trycode_auth
 }
 
 async fn check_project_write_access(db: &PgPool, project_id: Uuid, user: &trycode_auth::models::User) -> bool {
-    let project = sqlx::query!("SELECT owner_id FROM projects WHERE id = $1", project_id)
+    let project = sqlx::query_scalar::<_, Uuid>("SELECT owner_id FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(db)
         .await
         .ok()
         .flatten();
 
-    if let Some(project) = project {
-        if project.owner_id == user.id {
+    if let Some(owner_id) = project {
+        if owner_id == user.id {
             return true;
         }
 
-        let collab = sqlx::query!(
+        let collab = sqlx::query(
             "SELECT 1 FROM project_collaborators WHERE project_id = $1 AND user_id = $2 AND role IN ('editor', 'admin') AND accepted_at IS NOT NULL",
-            project_id, user.id
         )
+        .bind(project_id)
+        .bind(user.id)
         .fetch_optional(db)
         .await
         .ok()
@@ -132,7 +134,19 @@ async fn check_project_write_access(db: &PgPool, project_id: Uuid, user: &trycod
     false
 }
 
+#[derive(Clone)]
 pub struct CollabState {
     pub db: PgPool,
     pub broker: Arc<crate::broker::YrsBroker>,
+    pub jwt: trycode_core::config::JwtConfig,
+}
+
+impl trycode_auth::middleware::AuthDepot for CollabState {
+    fn auth_db(&self) -> &PgPool {
+        &self.db
+    }
+
+    fn jwt_config(&self) -> &trycode_core::config::JwtConfig {
+        &self.jwt
+    }
 }

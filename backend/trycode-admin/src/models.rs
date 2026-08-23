@@ -193,7 +193,7 @@ pub struct ExecutionQuery {
     pub offset: Option<u32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ExecutionDetail {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -217,7 +217,7 @@ pub struct ExecutionDetail {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct UserAdminView {
     pub id: Uuid,
     pub email: String,
@@ -227,7 +227,7 @@ pub struct UserAdminView {
     pub email_verified: bool,
     pub created_at: DateTime<Utc>,
     pub last_login_at: Option<DateTime<Utc>>,
-    pub total_executions: u64,
-    pub executions_24h: u64,
+    pub total_executions: i64,
+    pub executions_24h: i64,
     pub is_locked: bool,
 }

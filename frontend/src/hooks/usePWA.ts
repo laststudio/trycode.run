@@ -86,46 +86,15 @@ export function usePWA() {
                   setState(prev => ({ ...prev, updateAvailable: true }));
                 }
               });
-            });
-            
+            }
+
             setState(prev => ({ ...prev, swRegistration: registration }));
-          })
-          .catch(error => {
-            console.error('[PWA] Service Worker registration failed:', error);
           });
+        })
+        .catch(error => {
+          console.error('[PWA] Service Worker registration failed:', error);
+        });
     }
-    
-    // 检查是否已安装
-    const isInstalled = checkInstalled();
-    setState(prev => ({ ...prev, isInstalled }));
-    
-    // 监听在线/离线
-    window.addEventListener('online', () => setState(prev => ({ ...prev, isOnline: true })));
-    window.addEventListener('offline', () => setState(prev => ({ ...prev, isOnline: false })));
-    
-    // 监听 beforeinstallprompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setState(prev => ({ 
-        ...prev, 
-        isInstallable: true, 
-        deferredPrompt: e as BeforeInstallPromptEvent 
-      }));
-    };
-    
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
-    // 监听 appinstalled 事件
-    const handleAppInstalled = () => {
-      setState(prev => ({ 
-        ...prev, 
-        isInstalled: true, 
-        isInstallable: false, 
-        deferredPrompt: null 
-      }));
-    };
-    
-    window.addEventListener('appinstalled', handleAppInstalled);
     
     // 监听 SW 更新
     const handleControllerChange = () => {
@@ -135,11 +104,7 @@ export function usePWA() {
     };
     
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-    
-    // 监听在线/离线
-    window.addEventListener('online', () => setState(prev => ({ ...prev, isOnline: true })));
-    window.addEventListener('offline', () => setState(prev => ({ ...prev, isOnline: false })));
-    
+
     // 清理
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -211,8 +176,8 @@ export function usePWA() {
     
     let totalSize = 0;
     const cacheNames = await caches.keys();
-    
-    for (const name of await caches.keys()) {
+
+    for (const name of cacheNames) {
       const cache = await caches.open(name);
       const keys = await cache.keys();
       for (const request of keys) {
@@ -275,13 +240,6 @@ export function usePWA() {
   };
 }
 
-// 检查是否已安装
-function checkInstalled(): boolean {
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  const isInWebAppiOS = (window.navigator as any).standalone === true;
-  return isStandalone || isInWebAppiOS;
-}
-
 // Service Worker 消息通信
 export function sendSWMessage(type: string, payload?: any): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -306,7 +264,7 @@ export function sendSWMessage(type: string, payload?: any): Promise<any> {
     
     // 超时处理
     setTimeout(() => reject(new Error('Message timeout')), 5000);
-  };
+  });
 }
 
 // 注册周期性同步
@@ -371,7 +329,7 @@ export function useOnlineStatus() {
 
 // PWA 安装状态 Hook
 export function usePWAInstallStatus() {
-  const [isInstallable, setIsInstallable] = useState(false);
+  const [isInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   
   useEffect(() => {

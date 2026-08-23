@@ -57,3 +57,30 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+
+export interface ExecuteCodeRequest {
+  code: string;
+  language: string;
+  stdin?: string;
+  files?: Array<{ path: string; content: string; is_main: boolean }>;
+  project_id?: string;
+  timeout_secs?: number;
+}
+
+/** 执行代码 */
+export async function executeCode(request: ExecuteCodeRequest): Promise<{ data: any }> {
+  return api.post('/execution/execute', request);
+}
+
+export interface AiExecuteRequest {
+  type: 'explain' | 'review' | 'generate-tests' | 'chat';
+  code?: string;
+  language?: string;
+  prompt?: string;
+  context?: string;
+}
+
+/** 调用 AI 助手 */
+export async function executeAi(request: AiExecuteRequest): Promise<{ data: any }> {
+  return api.post('/ai/execute', request);
+}

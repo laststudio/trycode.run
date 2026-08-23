@@ -58,5 +58,5 @@ export async function renderApp(context: SSRContext) {
         onError: reject
       }
     );
-  };
+  });
 }

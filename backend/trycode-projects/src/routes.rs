@@ -4,18 +4,36 @@ use axum::{
     response::Json,
 };
 use sqlx::PgPool;
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     fs::FileSystem,
     models::{
-        CollaboratorRole, CreateProjectRequest, CreateShareLinkRequest, InviteCollaboratorRequest,
+        CreateProjectRequest, CreateShareLinkRequest, InviteCollaboratorRequest,
         Project, ProjectFile, ProjectVisibility, ShareLink, ShareLinkResponse, UpdateProjectRequest,
     },
 };
-use trycode_auth::{AuthExtractor, OptionalAuthExtractor};
+use trycode_auth::{
+    hash_password, verify_password, Argon2Config, AuthExtractor, OptionalAuthExtractor,
+};
 use trycode_core::{CoreError, Result};
+
+#[derive(Clone)]
+pub struct ProjectsState {
+    pub db: PgPool,
+    pub fs: std::sync::Arc<FileSystem>,
+    pub jwt: trycode_core::config::JwtConfig,
+}
+
+impl trycode_auth::middleware::AuthDepot for ProjectsState {
+    fn auth_db(&self) -> &PgPool {
+        &self.db
+    }
+
+    fn jwt_config(&self) -> &trycode_core::config::JwtConfig {
+        &self.jwt
+    }
+}
 
 #[derive(serde::Deserialize)]
 pub struct ListProjectsQuery {
@@ -25,29 +43,29 @@ pub struct ListProjectsQuery {
 }
 
 pub async fn create_project(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<(StatusCode, Json<Project>)> {
     let project_id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
-    let project = sqlx::query_as!(Project,
+    let project = sqlx::query_as::<_, Project>(
         r#"
         INSERT INTO projects (id, owner_id, name, description, visibility, language, is_template, forked_from, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
         RETURNING *
         "#,
-        project_id,
-        auth.user.id,
-        payload.name,
-        payload.description,
-        payload.visibility as _,
-        payload.language,
-        payload.is_template.unwrap_or(false),
-        payload.template_id,
-        now
     )
+    .bind(project_id)
+    .bind(auth.user.id)
+    .bind(payload.name)
+    .bind(payload.description)
+    .bind(&payload.visibility)
+    .bind(&payload.language)
+    .bind(payload.is_template.unwrap_or(false))
+    .bind(payload.template_id)
+    .bind(now)
     .fetch_one(&state.db)
     .await?;
 
@@ -58,19 +76,20 @@ pub async fn create_project(
         name: format!("main{}", ext),
         is_directory: false,
         parent_id: None,
-        content: Some(get_default_template(payload.language.as_deref().unwrap_or("txt"))),
-        mime_type: Some(get_mime_type(payload.language.as_deref().unwrap_or("txt"))),
+        content: Some(get_default_template(payload.language.as_deref().unwrap_or("txt")).to_string()),
+        mime_type: Some(get_mime_type(payload.language.as_deref().unwrap_or("txt")).to_string()),
     }, auth.user.id).await?;
 
     Ok((StatusCode::CREATED, Json(project)))
 }
 
 pub async fn get_project(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: OptionalAuthExtractor,
     Path(project_id): Path<Uuid>,
 ) -> Result<Json<Project>> {
-    let project = sqlx::query_as!(Project, "SELECT * FROM projects WHERE id = $1", project_id)
+    let project = sqlx::query_as::<_, Project>("SELECT * FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(&state.db)
         .await?
         .ok_or(CoreError::NotFound("Project not found".to_string()))?;
@@ -84,7 +103,7 @@ pub async fn get_project(
 }
 
 pub async fn update_project(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectRequest>,
@@ -94,7 +113,7 @@ pub async fn update_project(
         return Err(CoreError::Forbidden("Write access denied".to_string()));
     }
 
-    let project = sqlx::query_as!(Project,
+    let project = sqlx::query_as::<_, Project>(
         r#"
         UPDATE projects SET
             name = COALESCE($1, name),
@@ -105,12 +124,12 @@ pub async fn update_project(
         WHERE id = $5
         RETURNING *
         "#,
-        payload.name,
-        payload.description,
-        payload.visibility as _,
-        payload.language,
-        project_id
     )
+    .bind(payload.name)
+    .bind(payload.description)
+    .bind(payload.visibility)
+    .bind(payload.language)
+    .bind(project_id)
     .fetch_optional(&state.db)
     .await?
     .ok_or(CoreError::NotFound("Project not found".to_string()))?;
@@ -119,12 +138,13 @@ pub async fn update_project(
 }
 
 pub async fn delete_project(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
 ) -> Result<StatusCode> {
     // Check ownership
-    let project = sqlx::query_as!(Project, "SELECT * FROM projects WHERE id = $1", project_id)
+    let project = sqlx::query_as::<_, Project>("SELECT * FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(&state.db)
         .await?
         .ok_or(CoreError::NotFound("Project not found".to_string()))?;
@@ -133,7 +153,8 @@ pub async fn delete_project(
         return Err(CoreError::Forbidden("Only owner can delete project".to_string()));
     }
 
-    sqlx::query!("DELETE FROM projects WHERE id = $1", project_id)
+    sqlx::query("DELETE FROM projects WHERE id = $1")
+        .bind(project_id)
         .execute(&state.db)
         .await?;
 
@@ -141,7 +162,7 @@ pub async fn delete_project(
 }
 
 pub async fn list_projects(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: OptionalAuthExtractor,
     Query(query): Query<ListProjectsQuery>,
 ) -> Result<Json<Vec<Project>>> {
@@ -150,26 +171,33 @@ pub async fn list_projects(
 
     let projects = if let Some(user) = auth.user {
         if let Some(visibility) = query.visibility {
-            sqlx::query_as!(Project,
+            sqlx::query_as::<_, Project>(
                 "SELECT * FROM projects WHERE (owner_id = $1 OR visibility = 'public') AND visibility = $2 ORDER BY updated_at DESC LIMIT $3 OFFSET $4",
-                user.id, visibility as _, limit as i64, offset as i64
             )
+            .bind(user.id)
+            .bind(visibility)
+            .bind(limit as i64)
+            .bind(offset as i64)
             .fetch_all(&state.db)
             .await?
         } else {
-            sqlx::query_as!(Project,
+            sqlx::query_as::<_, Project>(
                 "SELECT * FROM projects WHERE owner_id = $1 OR visibility = 'public' ORDER BY updated_at DESC LIMIT $2 OFFSET $3",
-                user.id, limit as i64, offset as i64
             )
+            .bind(user.id)
+            .bind(limit as i64)
+            .bind(offset as i64)
             .fetch_all(&state.db)
             .await?
         }
     } else {
         let visibility = query.visibility.unwrap_or(ProjectVisibility::Public);
-        sqlx::query_as!(Project,
+        sqlx::query_as::<_, Project>(
             "SELECT * FROM projects WHERE visibility = $1 ORDER BY updated_at DESC LIMIT $2 OFFSET $3",
-            visibility as _, limit as i64, offset as i64
         )
+        .bind(visibility)
+        .bind(limit as i64)
+        .bind(offset as i64)
         .fetch_all(&state.db)
         .await?
     };
@@ -178,11 +206,12 @@ pub async fn list_projects(
 }
 
 pub async fn fork_project(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
 ) -> Result<(StatusCode, Json<Project>)> {
-    let original = sqlx::query_as!(Project, "SELECT * FROM projects WHERE id = $1", project_id)
+    let original = sqlx::query_as::<_, Project>("SELECT * FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(&state.db)
         .await?
         .ok_or(CoreError::NotFound("Project not found".to_string()))?;
@@ -195,20 +224,20 @@ pub async fn fork_project(
     let new_project_id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
-    let project = sqlx::query_as!(Project,
+    let project = sqlx::query_as::<_, Project>(
         r#"
         INSERT INTO projects (id, owner_id, name, description, visibility, language, is_template, forked_from, created_at, updated_at)
         VALUES ($1, $2, $3, $4, 'private', $5, false, $6, $7, $7)
         RETURNING *
         "#,
-        new_project_id,
-        auth.user.id,
-        format!("{} (fork)", original.name),
-        original.description,
-        original.language,
-        project_id,
-        now
     )
+    .bind(new_project_id)
+    .bind(auth.user.id)
+    .bind(format!("{} (fork)", original.name))
+    .bind(original.description)
+    .bind(original.language)
+    .bind(project_id)
+    .bind(now)
     .fetch_one(&state.db)
     .await?;
 
@@ -231,7 +260,7 @@ pub async fn fork_project(
 }
 
 pub async fn list_files(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: OptionalAuthExtractor,
     Path(project_id): Path<Uuid>,
     Query(query): Query<ListFilesQuery>,
@@ -250,7 +279,7 @@ pub async fn list_files(
 }
 
 pub async fn get_file(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: OptionalAuthExtractor,
     Path((project_id, file_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<ProjectFile>> {
@@ -263,7 +292,7 @@ pub async fn get_file(
 }
 
 pub async fn create_file(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<crate::models::CreateFileRequest>,
@@ -277,7 +306,7 @@ pub async fn create_file(
 }
 
 pub async fn update_file(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path((project_id, file_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<crate::models::UpdateFileRequest>,
@@ -291,7 +320,7 @@ pub async fn update_file(
 }
 
 pub async fn delete_file(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path((project_id, file_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
@@ -304,7 +333,7 @@ pub async fn delete_file(
 }
 
 pub async fn move_file(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path((project_id, file_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<MoveFileRequest>,
@@ -329,7 +358,7 @@ pub struct ListFilesQuery {
 }
 
 pub async fn create_share_link(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<CreateShareLinkRequest>,
@@ -340,32 +369,32 @@ pub async fn create_share_link(
 
     let token = generate_share_token();
     let password_hash = if let Some(password) = payload.password {
-        Some(hash_password(&password)?)
+        Some(hash_password(&password, &Argon2Config::default())?)
     } else {
         None
     };
 
     let permissions = payload.permissions.unwrap_or_default();
 
-    let share = sqlx::query_as!(ShareLink,
+    let share = sqlx::query_as::<_, ShareLink>(
         r#"
         INSERT INTO share_links (project_id, created_by, token, password_hash, expires_at, max_views, permissions)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         "#,
-        project_id,
-        auth.user.id,
-        token,
-        password_hash,
-        payload.expires_at,
-        payload.max_views,
-        serde_json::to_value(permissions)?
     )
+    .bind(project_id)
+    .bind(auth.user.id)
+    .bind(token)
+    .bind(password_hash)
+    .bind(payload.expires_at)
+    .bind(payload.max_views)
+    .bind(serde_json::to_value(permissions.clone())?)
     .fetch_one(&state.db)
     .await?;
 
     Ok(Json(ShareLinkResponse {
-        token: share.token,
+        token: share.token.clone(),
         url: format!("https://trycode.run/share/{}", share.token),
         expires_at: share.expires_at,
         permissions,
@@ -373,19 +402,20 @@ pub async fn create_share_link(
 }
 
 pub async fn get_share_link(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     Path(token): Path<String>,
 ) -> Result<Json<ShareLink>> {
-    let share = sqlx::query_as!(ShareLink,
+    let share = sqlx::query_as::<_, ShareLink>(
         "SELECT * FROM share_links WHERE token = $1 AND (expires_at IS NULL OR expires_at > NOW())",
-        token
     )
+    .bind(token)
     .fetch_optional(&state.db)
     .await?
     .ok_or(CoreError::NotFound("Share link not found or expired".to_string()))?;
 
     // Increment view count
-    sqlx::query!("UPDATE share_links SET view_count = view_count + 1 WHERE id = $1", share.id)
+    sqlx::query("UPDATE share_links SET view_count = view_count + 1 WHERE id = $1")
+        .bind(share.id)
         .execute(&state.db)
         .await?;
 
@@ -400,26 +430,27 @@ pub async fn get_share_link(
 }
 
 pub async fn verify_share_password(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     Path(token): Path<String>,
     Json(payload): Json<VerifySharePasswordRequest>,
 ) -> Result<Json<ShareLink>> {
-    let share = sqlx::query_as!(ShareLink,
+    let share = sqlx::query_as::<_, ShareLink>(
         "SELECT * FROM share_links WHERE token = $1 AND (expires_at IS NULL OR expires_at > NOW())",
-        token
     )
+    .bind(token)
     .fetch_optional(&state.db)
     .await?
     .ok_or(CoreError::NotFound("Share link not found or expired".to_string()))?;
 
-    if let Some(password_hash) = share.password_hash {
-        if !verify_password(&payload.password, &password_hash)? {
+    if let Some(password_hash) = &share.password_hash {
+        if !verify_password(&payload.password, password_hash)? {
             return Err(CoreError::Unauthorized("Invalid password".to_string()));
         }
     }
 
     // Increment view count
-    sqlx::query!("UPDATE share_links SET view_count = view_count + 1 WHERE id = $1", share.id)
+    sqlx::query("UPDATE share_links SET view_count = view_count + 1 WHERE id = $1")
+        .bind(share.id)
         .execute(&state.db)
         .await?;
 
@@ -432,7 +463,7 @@ pub struct VerifySharePasswordRequest {
 }
 
 pub async fn invite_collaborator(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<InviteCollaboratorRequest>,
@@ -442,9 +473,10 @@ pub async fn invite_collaborator(
     }
 
     // Find user by email
-    let invited_user = sqlx::query_as!(trycode_auth::models::User,
-        "SELECT * FROM users WHERE email = $1", payload.email
+    let invited_user = sqlx::query_as::<_, trycode_auth::models::User>(
+        "SELECT * FROM users WHERE email = $1",
     )
+    .bind(payload.email)
     .fetch_optional(&state.db)
     .await?
     .ok_or(CoreError::NotFound("User not found".to_string()))?;
@@ -453,7 +485,7 @@ pub async fn invite_collaborator(
         return Err(CoreError::Validation("Cannot invite yourself".to_string()));
     }
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO project_collaborators (project_id, user_id, role, invited_by, invited_at)
         VALUES ($1, $2, $3, $4, NOW())
@@ -463,11 +495,11 @@ pub async fn invite_collaborator(
             invited_at = EXCLUDED.invited_at,
             accepted_at = NULL
         "#,
-        project_id,
-        invited_user.id,
-        payload.role as _,
-        auth.user.id
     )
+    .bind(project_id)
+    .bind(invited_user.id)
+    .bind(payload.role)
+    .bind(auth.user.id)
     .execute(&state.db)
     .await?;
 
@@ -477,7 +509,7 @@ pub async fn invite_collaborator(
 }
 
 pub async fn list_collaborators(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path(project_id): Path<Uuid>,
 ) -> Result<Json<Vec<crate::models::ProjectCollaborator>>> {
@@ -485,10 +517,10 @@ pub async fn list_collaborators(
         return Err(CoreError::Forbidden("Access denied".to_string()));
     }
 
-    let collaborators = sqlx::query_as!(crate::models::ProjectCollaborator,
+    let collaborators = sqlx::query_as::<_, crate::models::ProjectCollaborator>(
         "SELECT * FROM project_collaborators WHERE project_id = $1 ORDER BY invited_at DESC",
-        project_id
     )
+    .bind(project_id)
     .fetch_all(&state.db)
     .await?;
 
@@ -496,7 +528,7 @@ pub async fn list_collaborators(
 }
 
 pub async fn update_collaborator(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path((project_id, user_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<crate::models::UpdateCollaboratorRequest>,
@@ -505,18 +537,18 @@ pub async fn update_collaborator(
         return Err(CoreError::Forbidden("Write access denied".to_string()));
     }
 
-    sqlx::query!(
-        "UPDATE project_collaborators SET role = $1 WHERE project_id = $2 AND user_id = $3",
-        payload.role as _, project_id, user_id
-    )
-    .execute(&state.db)
-    .await?;
+    sqlx::query("UPDATE project_collaborators SET role = $1 WHERE project_id = $2 AND user_id = $3")
+        .bind(payload.role)
+        .bind(project_id)
+        .bind(user_id)
+        .execute(&state.db)
+        .await?;
 
     Ok(StatusCode::OK)
 }
 
 pub async fn remove_collaborator(
-    State(state): State<Arc<ProjectsState>>,
+    State(state): State<ProjectsState>,
     auth: AuthExtractor,
     Path((project_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
@@ -524,7 +556,9 @@ pub async fn remove_collaborator(
         return Err(CoreError::Forbidden("Write access denied".to_string()));
     }
 
-    sqlx::query!("DELETE FROM project_collaborators WHERE project_id = $1 AND user_id = $2", project_id, user_id)
+    sqlx::query("DELETE FROM project_collaborators WHERE project_id = $1 AND user_id = $2")
+        .bind(project_id)
+        .bind(user_id)
         .execute(&state.db)
         .await?;
 
@@ -532,7 +566,8 @@ pub async fn remove_collaborator(
 }
 
 async fn check_project_access(db: &PgPool, project_id: Uuid, user: Option<&trycode_auth::models::User>) -> bool {
-    let project = sqlx::query!("SELECT owner_id, visibility FROM projects WHERE id = $1", project_id)
+    let project = sqlx::query_as::<_, (Uuid, String)>("SELECT owner_id, visibility FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(db)
         .await
         .ok()
@@ -540,14 +575,15 @@ async fn check_project_access(db: &PgPool, project_id: Uuid, user: Option<&tryco
 
     if let Some(project) = project {
         if let Some(user) = user {
-            if project.owner_id == user.id {
+            if project.0 == user.id {
                 return true;
             }
 
-            let collab = sqlx::query!(
+            let collab = sqlx::query(
                 "SELECT 1 FROM project_collaborators WHERE project_id = $1 AND user_id = $2 AND accepted_at IS NOT NULL",
-                project_id, user.id
             )
+            .bind(project_id)
+            .bind(user.id)
             .fetch_optional(db)
             .await
             .ok()
@@ -558,7 +594,7 @@ async fn check_project_access(db: &PgPool, project_id: Uuid, user: Option<&tryco
             }
         }
 
-        if project.visibility == "public" {
+        if project.1 == "public" {
             return true;
         }
     }
@@ -567,21 +603,23 @@ async fn check_project_access(db: &PgPool, project_id: Uuid, user: Option<&tryco
 }
 
 async fn check_project_write_access(db: &PgPool, project_id: Uuid, user: &trycode_auth::models::User) -> bool {
-    let project = sqlx::query!("SELECT owner_id FROM projects WHERE id = $1", project_id)
+    let project = sqlx::query_scalar::<_, Uuid>("SELECT owner_id FROM projects WHERE id = $1")
+        .bind(project_id)
         .fetch_optional(db)
         .await
         .ok()
         .flatten();
 
-    if let Some(project) = project {
-        if project.owner_id == user.id {
+    if let Some(owner_id) = project {
+        if owner_id == user.id {
             return true;
         }
 
-        let collab = sqlx::query!(
+        let collab = sqlx::query(
             "SELECT 1 FROM project_collaborators WHERE project_id = $1 AND user_id = $2 AND role IN ('editor', 'admin') AND accepted_at IS NOT NULL",
-            project_id, user.id
         )
+        .bind(project_id)
+        .bind(user.id)
         .fetch_optional(db)
         .await
         .ok()
@@ -672,7 +710,7 @@ fn get_mime_type(language: &str) -> &'static str {
     }
 }
 
-fn get_default_template(language: &str) -> String {
+fn get_default_template(language: &str) -> &'static str {
     match language {
         "python" => "# Python Template\nprint(\"Hello, World!\")\n",
         "javascript" => "// JavaScript Template\nconsole.log(\"Hello, World!\");\n",
@@ -707,5 +745,3 @@ fn get_default_template(language: &str) -> String {
         _ => "// Template\n// Hello, World!\n",
     }
 }
-
-use trycode_auth::models::User;

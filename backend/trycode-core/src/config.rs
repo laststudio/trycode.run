@@ -2,7 +2,6 @@ use figment::{
     providers::{Env, Format, Toml},
     Figment,
 };
-use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,21 +13,36 @@ pub struct DatabaseConfig {
     pub port: u16,
     pub name: String,
     pub user: String,
-    #[serde(skip_serializing)]
-    pub password: SecretString,
+    #[serde(default)]
+    pub password: String,
+    #[serde(default = "default_max_conn")]
     pub max_connections: u32,
+    #[serde(default = "default_min_conn")]
     pub min_connections: u32,
+}
+
+fn default_max_conn() -> u32 { 10 }
+fn default_min_conn() -> u32 { 2 }
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            host: "pgdocker".into(),
+            port: 5432,
+            name: "trycode".into(),
+            user: "trycode".into(),
+            password: String::new(),
+            max_connections: default_max_conn(),
+            min_connections: default_min_conn(),
+        }
+    }
 }
 
 impl DatabaseConfig {
     pub fn url(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}/{}",
-            self.user,
-            self.password.expose_secret(),
-            self.host,
-            self.port,
-            self.name
+            self.user, self.password, self.host, self.port, self.name
         )
     }
 }
@@ -37,60 +51,82 @@ impl DatabaseConfig {
 pub struct RedisConfig {
     pub host: String,
     pub port: u16,
-    #[serde(skip_serializing)]
-    pub password: Option<SecretString>,
+    #[serde(default)]
+    pub password: Option<String>,
+    #[serde(default)]
     pub db: i64,
+    #[serde(default = "default_redis_max")]
     pub max_connections: u32,
+}
+
+fn default_redis_max() -> u32 { 20 }
+
+impl Default for RedisConfig {
+    fn default() -> Self {
+        Self {
+            host: "redisdocker".into(),
+            port: 6379,
+            password: None,
+            db: 0,
+            max_connections: default_redis_max(),
+        }
+    }
 }
 
 impl RedisConfig {
     pub fn url(&self) -> String {
         match &self.password {
-            Some(pwd) => format!(
-                "redis://:{}@{}:{}/{}",
-                pwd.expose_secret(),
-                self.host,
-                self.port,
-                self.db
-            ),
-            None => format!("redis://{}:{}/{}", self.host, self.port, self.db),
+            Some(pwd) if !pwd.is_empty() => {
+                format!("redis://:{}@{}:{}/{}", pwd, self.host, self.port, self.db)
+            }
+            _ => format!("redis://{}:{}/{}", self.host, self.port, self.db),
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SmtpConfig {
     pub host: String,
     pub port: u16,
     pub username: String,
-    #[serde(skip_serializing)]
-    pub password: SecretString,
+    #[serde(default)]
+    pub password: String,
     pub from: String,
+    #[serde(default = "default_tls")]
     pub tls: SmtpTlsMode,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+fn default_tls() -> SmtpTlsMode { SmtpTlsMode::Starttls }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum SmtpTlsMode {
     None,
+    #[default]
     Starttls,
     Tls,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CaptchaConfig {
+    #[serde(default)]
     pub provider: CaptchaProvider,
+    #[serde(default)]
     pub site_key: String,
-    #[serde(skip_serializing)]
-    pub secret_key: SecretString,
+    #[serde(default)]
+    pub secret_key: String,
+    #[serde(default)]
     pub verify_url: String,
+    #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
     pub actions: Vec<CaptchaAction>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum CaptchaProvider {
+    #[default]
     Trycap,
     Turnstile,
     HCaptcha,
@@ -107,46 +143,90 @@ pub enum CaptchaAction {
     Share,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OAuthConfig {
+    #[serde(default)]
     pub github: GitHubOAuthConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GitHubOAuthConfig {
+    #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
     pub client_id: String,
-    #[serde(skip_serializing)]
-    pub client_secret: SecretString,
+    #[serde(default)]
+    pub client_secret: String,
+    #[serde(default = "default_github_redirect")]
     pub redirect_url: String,
+    #[serde(default)]
     pub scopes: Vec<String>,
+    #[serde(default)]
     pub allowed_domains: Vec<String>,
+    #[serde(default = "default_true")]
     pub auto_create_user: bool,
+    #[serde(default = "default_role")]
     pub default_role: UserRole,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+fn default_github_redirect() -> String {
+    "https://trycode.run/api/auth/oauth/github/callback".to_string()
+}
+fn default_true() -> bool { true }
+fn default_role() -> UserRole { UserRole::User }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum UserRole {
+    #[default]
     User,
     Admin,
     SuperAdmin,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl std::fmt::Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::User => write!(f, "user"),
+            UserRole::Admin => write!(f, "admin"),
+            UserRole::SuperAdmin => write!(f, "super_admin"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AiConfig {
+    #[serde(default)]
     pub enabled: bool,
+    #[serde(default = "default_openai_url")]
     pub base_url: String,
-    #[serde(skip_serializing)]
-    pub api_key: SecretString,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default = "default_model")]
     pub default_model: String,
+    #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
+    #[serde(default = "default_temperature")]
     pub temperature: f32,
+    #[serde(default = "default_timeout")]
     pub timeout_secs: u64,
 }
 
+fn default_openai_url() -> String { "https://api.openai.com/v1".to_string() }
+fn default_model() -> String { "gpt-4o-mini".to_string() }
+fn default_max_tokens() -> u32 { 4096 }
+fn default_temperature() -> f32 { 0.3 }
+fn default_timeout() -> u64 { 30 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ExecutionConfig {
+    pub worker_names: Vec<String>,
+    pub docker_host: String,
+    pub default_timeout_secs: u32,
+    pub max_timeout_secs: u32,
+    pub max_output_bytes: usize,
+    pub disk_quota_mb: u32,
     pub global_max_concurrent: u32,
     pub per_user_max_concurrent: u32,
     pub queue_timeout_secs: u64,
@@ -163,51 +243,35 @@ pub struct ExecutionConfig {
     pub wasm_fallback: WasmFallbackConfig,
 }
 
-/// LSP (Language Server Protocol) 配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LSPConfig {
-    pub enabled: bool,
-    pub websocket_port: u16,
-    pub max_connections: usize,
-    pub request_timeout_secs: u64,
-    pub max_request_size: usize,
-    pub enable_compression: bool,
-    pub heartbeat_interval_secs: u64,
-    pub max_message_size: usize,
-    pub max_connections_per_language: usize,
-}
-
-impl Default for LSPConfig {
+impl Default for ExecutionConfig {
     fn default() -> Self {
         Self {
-            enabled: true,
-            websocket_port: 3001,
-            max_connections: 1000,
-            request_timeout_secs: 30,
-            max_request_size: 10 * 1024 * 1024,
-            enable_compression: true,
-            heartbeat_interval_secs: 30,
-            max_message_size: 10 * 1024 * 1024,
-            max_connections_per_language: 100,
+            worker_names: vec!["exec-worker-1".into(), "exec-worker-2".into()],
+            docker_host: "unix:///var/run/docker.sock".into(),
+            default_timeout_secs: 30,
+            max_timeout_secs: 120,
+            max_output_bytes: 1024 * 1024,
+            disk_quota_mb: 500,
+            global_max_concurrent: 4,
+            per_user_max_concurrent: 2,
+            queue_timeout_secs: 60,
+            default_cpu_time_secs: 30,
+            default_memory_mb: 256,
+            default_disk_mb: 100,
+            default_wall_time_secs: 60,
+            container_cpu_quota: 100000,
+            container_memory_mb: 768,
+            container_pids_limit: 100,
+            wasm_timeout_ms: 5000,
+            wasm_preload: vec!["python".into(), "javascript".into(), "typescript".into()],
+            retry: RetryConfig::default(),
+            wasm_fallback: WasmFallbackConfig::default(),
         }
     }
 }
 
-/// LSP 语言服务器配置（动态配置覆盖）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LSPServerConfigOverride {
-    pub language_id: String,
-    pub enabled: bool,
-    pub mode: String, // "resident", "on_demand", "hybrid"
-    pub memory_limit_mb: Option<u64>,
-    pub idle_timeout_secs: Option<u64>,
-    pub max_restarts: Option<u32>,
-    pub restart_delay_secs: Option<u64>,
-    pub custom_args: Option<Vec<String>>,
-    pub custom_env: Option<HashMap<String, String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct RetryConfig {
     pub max_attempts: u32,
     pub backoff_base_ms: u64,
@@ -216,7 +280,8 @@ pub struct RetryConfig {
     pub non_retryable_errors: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct WasmFallbackConfig {
     pub enabled: bool,
     pub timeout_ms: u64,
@@ -225,6 +290,7 @@ pub struct WasmFallbackConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
@@ -232,10 +298,21 @@ pub struct ServerConfig {
     pub shutdown_timeout_secs: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".into(),
+            port: 3000,
+            workers: 4,
+            shutdown_timeout_secs: 30,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct JwtConfig {
-    #[serde(skip_serializing)]
-    pub secret: SecretString,
+    pub secret: String,
     pub access_token_ttl_secs: u64,
     pub refresh_token_ttl_secs: u64,
     pub issuer: String,
@@ -243,13 +320,21 @@ pub struct JwtConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Argon2Config {
     pub memory_kib: u32,
     pub iterations: u32,
     pub parallelism: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for Argon2Config {
+    fn default() -> Self {
+        Self { memory_kib: 65536, iterations: 3, parallelism: 4 }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct FeatureFlags {
     pub registration_enabled: bool,
     pub email_verification_required: bool,
@@ -261,9 +346,26 @@ pub struct FeatureFlags {
     pub exec_queue_enabled: bool,
     pub captcha_enabled: bool,
     pub oauth_enabled: bool,
+    pub exec_lsp_enabled: bool,
+    pub ssr_enabled: bool,
+    pub ssr_pre_render_routes: Option<Vec<String>>,
+    pub ssr_cache_ttl_secs: Option<u64>,
+    pub math_default_renderer: Option<String>,
+    pub mermaid_security_level: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct LSPConfig {
+    pub enabled: bool,
+    pub websocket_port: u16,
+    pub max_connections: usize,
+    pub request_timeout_secs: u64,
+    pub heartbeat_interval_secs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
@@ -282,28 +384,27 @@ pub struct AppConfig {
 impl AppConfig {
     pub fn load() -> Result<Self, figment::Error> {
         Figment::new()
-            .merge(Toml::file(std::env::var("CONFIG_FILE").unwrap_or_else(|_| "/config/backend.toml".to_string())))
+            .merge(Toml::file(
+                std::env::var("CONFIG_FILE")
+                    .unwrap_or_else(|_| "/config/backend.toml".to_string()),
+            ))
             .merge(Env::prefixed("TRYCODE_").split("_"))
             .extract()
     }
 }
 
-/// Dynamic configuration loaded from database, supports hot reload
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// 动态配置（数据库加载，支持热更新）
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct DynamicConfig {
     pub system: HashMap<String, serde_json::Value>,
     pub languages: HashMap<String, LanguageConfig>,
     pub execution_configs: HashMap<String, ExecutionConfigOverride>,
     pub feature_flags: HashMap<String, bool>,
-    pub captcha: Option<CaptchaConfig>,
-    pub oauth: Option<OAuthConfig>,
-    pub ai: Option<AiConfig>,
-    pub smtp: Option<SmtpConfig>,
-    pub lsp: Option<LSPConfig>,
-    pub lsp_servers: HashMap<String, LSPServerConfigOverride>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct LanguageConfig {
     pub id: String,
     pub name: String,
@@ -319,7 +420,8 @@ pub struct LanguageConfig {
     pub resource_overrides: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ExecutionConfigOverride {
     pub max_concurrent: Option<u32>,
     pub cpu_time_limit_secs: Option<u64>,
@@ -330,91 +432,54 @@ pub struct ExecutionConfigOverride {
     pub daily_cpu_time_limit_secs: Option<u64>,
     pub queue_timeout_secs: Option<u64>,
     pub priority: Option<i32>,
-    pub retry_config: Option<RetryConfig>,
-    pub wasm_fallback_config: Option<WasmFallbackConfig>,
-}
-
-impl Default for DynamicConfig {
-    fn default() -> Self {
-        Self {
-            system: HashMap::new(),
-            languages: HashMap::new(),
-            execution_configs: HashMap::new(),
-            feature_flags: HashMap::new(),
-            captcha: None,
-            oauth: None,
-            ai: None,
-            smtp: None,
-        }
-    }
 }
 
 pub type SharedConfig = Arc<RwLock<DynamicConfig>>;
 
+/// 从数据库加载动态配置（运行时查询，无编译期检查）
 pub async fn load_dynamic_config(pool: &sqlx::PgPool) -> anyhow::Result<DynamicConfig> {
     let mut config = DynamicConfig::default();
 
-    // Load system configs
-    let rows = sqlx::query!("SELECT key, value FROM system_configs")
-        .fetch_all(pool)
-        .await?;
-    for row in rows {
-        config.system.insert(row.key, row.value);
+    // system_configs
+    let rows = sqlx::query_as::<_, (String, serde_json::Value)>(
+        "SELECT key, value FROM system_configs",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+    for (key, value) in rows {
+        config.system.insert(key, value);
     }
 
-    // Load language configs
-    let rows = sqlx::query!("SELECT * FROM language_configs WHERE enabled = true")
-        .fetch_all(pool)
-        .await?;
-    for row in rows {
+    // language_configs
+    let rows = sqlx::query_as::<_, (String, String, String, String, bool)>(
+        "SELECT id, name, display_name, version, enabled FROM language_configs WHERE enabled = true",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+    for (id, name, display_name, version, enabled) in rows {
         config.languages.insert(
-            row.id,
+            id.clone(),
             LanguageConfig {
-                id: row.id,
-                name: row.name,
-                display_name: row.display_name,
-                version: row.version,
-                enabled: row.enabled,
-                file_extensions: row.file_extensions,
-                mime_types: row.mime_types,
-                compile_command: row.compile_command,
-                run_command: row.run_command,
-                wasm_runtime: row.wasm_runtime,
-                wasm_preload: row.wasm_preload,
-                resource_overrides: row.resource_overrides,
+                id,
+                name,
+                display_name,
+                version,
+                enabled,
+                ..Default::default()
             },
         );
     }
 
-    // Load execution configs
-    let rows = sqlx::query!("SELECT * FROM execution_configs")
-        .fetch_all(pool)
-        .await?;
-    for row in rows {
-        config.execution_configs.insert(
-            row.id,
-            ExecutionConfigOverride {
-                max_concurrent: row.max_concurrent,
-                cpu_time_limit_secs: row.cpu_time_limit_secs,
-                wall_time_limit_secs: row.wall_time_limit_secs,
-                memory_limit_mb: row.memory_limit_mb,
-                disk_limit_mb: row.disk_limit_mb,
-                daily_execution_limit: row.daily_execution_limit,
-                daily_cpu_time_limit_secs: row.daily_cpu_time_limit_secs,
-                queue_timeout_secs: row.queue_timeout_secs,
-                priority: row.priority,
-                retry_config: row.retry_config,
-                wasm_fallback_config: row.wasm_fallback_config,
-            },
-        );
-    }
-
-    // Load feature flags
-    let rows = sqlx::query!("SELECT key, enabled FROM feature_flags")
-        .fetch_all(pool)
-        .await?;
-    for row in rows {
-        config.feature_flags.insert(row.key, row.enabled);
+    // feature_flags
+    let rows =
+        sqlx::query_as::<_, (String, bool)>("SELECT key, enabled FROM feature_flags")
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
+    for (key, enabled) in rows {
+        config.feature_flags.insert(key, enabled);
     }
 
     Ok(config)

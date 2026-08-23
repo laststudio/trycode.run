@@ -354,7 +354,7 @@ const goSnippets = [
 /**
  * 创建 Go Monaco 补全提供者
  */
-export function createGoCompletionProvider(monaco: typeof monaco) {
+export function createGoCompletionProvider(monacoInstance: typeof monaco) {
   const allKeywords = goKeywords;
   const allSnippets = goSnippets;
 

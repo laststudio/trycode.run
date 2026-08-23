@@ -1,0 +1,79 @@
+# ================================
+# 操作系统特定
+# ================================
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+*~
+desktop.ini
+
+# ================================
+# IDE / 编辑器
+# ================================
+.vscode/
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vs/
+*.code-workspace
+
+# ================================
+# Node.js / React (Vite)
+# ================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Vite 构建缓存与输出
+dist/
+dist-ssr/
+build/
+.vite/
+.cache/
+
+# 环境变量（敏感信息）
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# 测试覆盖率
+coverage/
+.nyc_output/
+
+# ================================
+# Rust
+# ================================
+# 编译输出目录
+target/
+# 备份文件
+**/*.rs.bk
+# Windows调试符号
+*.pdb
+
+# Cargo.lock 策略说明：
+# - 如果你是 应用程序 (bin)，建议提交 Cargo.lock 以保持依赖一致性（请注释掉下面这行）。
+# - 如果你是 库 (lib)，建议忽略 Cargo.lock（请取消下面这行的注释）。
+# Cargo.lock
+
+# ================================
+# Docker
+# ================================
+# Docker 镜像/容器导出文件
+*.tar
+*.tar.gz
+
+# 本地挂载的卷数据（防止提交数据库或运行时产生的庞大数据）
+docker/volumes/
+docker-data/
+volumes/
+
+# 如果使用 Docker 构建时的临时上下文
+.docker/

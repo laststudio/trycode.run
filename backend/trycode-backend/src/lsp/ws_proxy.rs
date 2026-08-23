@@ -1,14 +1,18 @@
 use crate::lsp::types::*;
-use anyhow::{anyhow, Context, Result};
 use axum::{
-    extract::{ws::{Message, WebSocket, WebSocketUpgrade}, Query, State},
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Query, State,
+    },
     response::Response,
+    Json,
 };
 use futures::{SinkExt, StreamExt};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tokio::time::interval;
+use tracing::{error, info, warn};
 
 /// WebSocket 连接上下文
 #[derive(Debug)]
@@ -42,7 +46,7 @@ impl Default for WSProxyConfig {
             heartbeat_interval_secs: 30,
             request_timeout_secs: 30,
             max_message_size: 10 * 1024 * 1024, // 10MB
-            connection_timeout_secs: 300, // 5分钟无活动断开
+            connection_timeout_secs: 300,       // 5分钟无活动断开
         }
     }
 }
@@ -59,25 +63,28 @@ impl WSProxyHandler {
     pub async fn handle_upgrade(
         self: Arc<Self>,
         ws: WebSocketUpgrade,
-        Query(params): Query<WSConnectParams>,
-        auth: Option<crate::auth::AuthExtractor>,
+        params: WSConnectParams,
+        auth: Option<trycode_auth::AuthExtractor>,
     ) -> Response {
         // 验证参数
         let language_id = params.language_id.clone();
-        
+
         // 如果指定了语言，检查是否支持
         if let Some(ref lang) = language_id {
-            if !self.multiplexer.is_registered(lang) {
+            if !self.multiplexer.is_registered(lang).await {
                 return Response::builder()
                     .status(400)
-                    .body(format!("Language not supported: {}", lang).into())
+                    .body(axum::body::Body::from(format!(
+                        "Language not supported: {}",
+                        lang
+                    )))
                     .unwrap();
             }
         }
 
         // 认证检查（可选）
         let user_id = auth.map(|a| a.user.id.to_string());
-        
+
         ws.on_upgrade(move |socket| self.handle_connection(socket, language_id, user_id))
     }
 
@@ -89,8 +96,10 @@ impl WSProxyHandler {
         user_id: Option<String>,
     ) {
         let client_id = self.multiplexer.next_client_id();
-        info!("New LSP WebSocket connection: client_id={}, language={:?}, user={:?}", 
-            client_id, language_id, user_id);
+        info!(
+            "New LSP WebSocket connection: client_id={}, language={:?}, user={:?}",
+            client_id, language_id, user_id
+        );
 
         let (mut sender, mut receiver) = socket.split();
         let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
@@ -114,144 +123,60 @@ impl WSProxyHandler {
         };
 
         // 如果指定了语言，尝试获取/启动客户端
-        let mut lsp_client = None;
         if let Some(ref lang) = language_id {
-            match self.multiplexer.get_or_start_client(lang).await {
-                Ok(client) => {
-                    lsp_client = Some(client);
-                    ctx.language_id = Some(lang.clone());
-                }
-                Err(e) => {
-                    error!("Failed to start LSP client for {}: {}", lang, e);
-                    let _ = tx.send(Message::Text(serde_json::to_string(&LSPWSMessage::Error {
+            if let Err(e) = self.multiplexer.get_or_start_client(lang).await {
+                error!("Failed to start LSP client for {}: {}", lang, e);
+                let _ = tx.send(Message::Text(
+                    serde_json::to_string(&LSPWSMessage::Error {
                         request_id: None,
                         code: -32603,
                         message: format!("Failed to start LSP server: {}", e),
-                    }).unwrap()));
-                }
+                    })
+                    .unwrap(),
+                ));
             }
         }
 
         // 心跳定时器
         let heartbeat_tx = tx.clone();
-        let heartbeat_interval = self.config.heartbeat_interval_secs;
+        let heartbeat_interval_secs = self.config.heartbeat_interval_secs;
         let heartbeat_handle = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(heartbeat_interval));
+            let mut ticker = interval(Duration::from_secs(heartbeat_interval_secs));
             loop {
-                interval.tick().await;
+                ticker.tick().await;
                 if heartbeat_tx.send(Message::Ping(vec![])).is_err() {
                     break;
                 }
             }
         });
 
-        // 连接超时检查
-        let connection_timeout = self.config.connection_timeout_secs;
-        let tx_clone = tx.clone();
+        // 连接超时检查（简化版：依靠心跳保活，暂不实现主动断开）
         let timeout_handle = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(60));
+            let mut ticker = interval(Duration::from_secs(60));
             loop {
-                interval.tick().await;
-                // 这里需要一种机制来检查最后活动时间
-                // 简化版：依靠心跳和接收超时
+                ticker.tick().await;
+                // TODO: 检查最后活动时间并断开超时连接
             }
         });
 
         // 处理接收消息
         let multiplexer = self.multiplexer.clone();
-        let config = self.config.clone();
-        let mut request_id_counter = 0u64;
 
         while let Some(msg) = receiver.next().await {
             ctx.last_activity = Instant::now();
-            
+
             match msg {
                 Ok(Message::Text(text)) => {
-                    match serde_json::from_str::<LSPWSMessage>(&text) {
-                        Ok(LSPWSMessage::Request { request_id, language_id, method, params }) => {
-                            // 处理请求
-                            let target_lang = language_id.or_else(|| ctx.language_id.clone());
-                            if let Some(lang) = target_lang {
-                                if let Some(client) = multiplexer.get_client(&lang) {
-                                    ctx.language_id = Some(lang.clone());
-                                    
-                                    match client.send_request(&method, params).await {
-                                        Ok(result) => {
-                                            let response = LSPWSMessage::Response {
-                                                request_id,
-                                                result: Some(result),
-                                                error: None,
-                                            };
-                                            let _ = tx.send(Message::Text(serde_json::to_string(&response).unwrap()));
-                                        }
-                                        Err(e) => {
-                                            let response = LSPWSMessage::Response {
-                                                request_id,
-                                                result: None,
-                                                error: Some(LSPError {
-                                                    code: -32603,
-                                                    message: e.to_string(),
-                                                    data: None,
-                                                }),
-                                            };
-                                            let _ = tx.send(Message::Text(serde_json::to_string(&response).unwrap()));
-                                        }
-                                    }
-                                } else {
-                                    let response = LSPWSMessage::Error {
-                                        request_id: Some(request_id),
-                                        code: -32601,
-                                        message: "Language not supported or not running".to_string(),
-                                    };
-                                    let _ = tx.send(Message::Text(serde_json::to_string(&response).unwrap()));
-                                }
-                            } else {
-                                let response = LSPWSMessage::Error {
-                                    request_id: Some(request_id),
-                                    code: -32601,
-                                    message: "No language specified".to_string(),
-                                };
-                                let _ = tx.send(Message::Text(serde_json::to_string(&response).unwrap()));
-                            }
-                        }
-                        Ok(LSPWSMessage::Notification { language_id, method, params }) => {
-                            let target_lang = language_id.or_else(|| ctx.language_id.clone());
-                            if let Some(lang) = target_lang {
-                                if let Some(client) = multiplexer.get_client(&lang) {
-                                    ctx.language_id = Some(lang.clone());
-                                    let _ = client.send_notification(&method, params).await;
-                                }
-                            }
-                        }
-                        Ok(LSPWSMessage::Response { .. }) => {
-                            // 忽略响应（我们是客户端代理）
-                        }
-                        Ok(LSPWSMessage::Error { .. }) => {
-                            // 忽略错误消息
-                        }
-                        Ok(LSPWSMessage::Ping) => {
-                            let _ = tx.send(Message::Pong(vec![]));
-                        }
-                        Ok(LSPWSMessage::Pong) => {
-                            // 心跳响应，更新活动时间
-                        }
-                    }
-                    Err(e) => {
-                        warn!("Failed to parse WebSocket message: {}", e);
-                        let _ = tx.send(Message::Text(serde_json::to_string(&LSPWSMessage::Error {
-                            request_id: None,
-                            code: -32700,
-                            message: "Parse error".to_string(),
-                        }).unwrap()));
-                    }
+                    handle_text_message(&text, &mut ctx, &multiplexer, &tx);
                 }
                 Ok(Message::Binary(_)) => {
                     // 不支持二进制消息
-                    let _ = tx.send(Message::Text(serde_json::to_string(&LSPWSMessage::Error {
-                        request_id: None,
-                        code: -32600,
-                        message: "Binary messages not supported".to_string(),
-                    }).unwrap()));
+                    send_lsp_error(
+                        &tx,
+                        None,
+                        -32600,
+                        "Binary messages not supported".to_string(),
+                    );
                 }
                 Ok(Message::Ping(data)) => {
                     let _ = tx.send(Message::Pong(data));
@@ -273,9 +198,122 @@ impl WSProxyHandler {
         heartbeat_handle.abort();
         timeout_handle.abort();
         send_task.abort();
-        
+
         // 如果有语言客户端，考虑是否需要减少引用计数
         info!("LSP WebSocket connection closed: client_id={}", client_id);
+    }
+}
+
+fn send_lsp_error(tx: &mpsc::UnboundedSender<Message>, request_id: Option<u64>, code: i32, message: String) {
+    let payload = LSPWSMessage::Error {
+        request_id,
+        code,
+        message,
+    };
+    if let Ok(json) = serde_json::to_string(&payload) {
+        let _ = tx.send(Message::Text(json));
+    }
+}
+
+fn handle_text_message(
+    text: &str,
+    ctx: &mut WSConnectionContext,
+    multiplexer: &Arc<crate::lsp::multiplexer::LSPMultiplexer>,
+    tx: &mpsc::UnboundedSender<Message>,
+) {
+    match serde_json::from_str::<LSPWSMessage>(text) {
+        Ok(LSPWSMessage::Request {
+            request_id,
+            language_id,
+            method,
+            params,
+        }) => {
+            // 优先使用请求指定的语言，否则回落到连接默认语言
+            let target_lang = if language_id.is_empty() {
+                ctx.language_id.clone()
+            } else {
+                Some(language_id.clone())
+            };
+
+            if let Some(lang) = target_lang {
+                ctx.language_id = Some(lang.clone());
+                if let Some(client) = multiplexer.get_client(&lang) {
+                    let tx = tx.clone();
+                    // 在独立任务中执行请求并回发响应
+                    tokio::spawn(async move {
+                        match client.send_request(&method, params).await {
+                            Ok(result) => {
+                                let response = LSPWSMessage::Response {
+                                    request_id,
+                                    result: Some(result),
+                                    error: None,
+                                };
+                                if let Ok(json) = serde_json::to_string(&response) {
+                                    let _ = tx.send(Message::Text(json));
+                                }
+                            }
+                            Err(e) => {
+                                let response = LSPWSMessage::Response {
+                                    request_id,
+                                    result: None,
+                                    error: Some(LSPError {
+                                        code: -32603,
+                                        message: e.to_string(),
+                                        data: None,
+                                    }),
+                                };
+                                if let Ok(json) = serde_json::to_string(&response) {
+                                    let _ = tx.send(Message::Text(json));
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    send_lsp_error(
+                        tx,
+                        Some(request_id),
+                        -32601,
+                        "Language not supported or not running".to_string(),
+                    );
+                }
+            } else {
+                send_lsp_error(tx, Some(request_id), -32601, "No language specified".to_string());
+            }
+        }
+        Ok(LSPWSMessage::Notification {
+            language_id,
+            method,
+            params,
+        }) => {
+            let target_lang = if language_id.is_empty() {
+                ctx.language_id.clone()
+            } else {
+                Some(language_id)
+            };
+            if let Some(lang) = target_lang {
+                ctx.language_id = Some(lang.clone());
+                if let Some(client) = multiplexer.get_client(&lang) {
+                    // 通知为即发即忘；在同步上下文中使用 block_on 等待写入完成
+                    let _ = futures::executor::block_on(client.send_notification(&method, params));
+                }
+            }
+        }
+        Ok(LSPWSMessage::Response { .. }) => {
+            // 忽略响应（我们是客户端代理）
+        }
+        Ok(LSPWSMessage::Error { .. }) => {
+            // 忽略错误消息
+        }
+        Ok(LSPWSMessage::Ping) => {
+            let _ = tx.send(Message::Pong(vec![]));
+        }
+        Ok(LSPWSMessage::Pong) => {
+            // 心跳响应，更新活动时间
+        }
+        Err(e) => {
+            warn!("Failed to parse WebSocket message: {}", e);
+            send_lsp_error(tx, None, -32700, "Parse error".to_string());
+        }
     }
 }
 
@@ -286,28 +324,34 @@ pub struct WSConnectParams {
     pub token: Option<String>, // 用于认证的 token
 }
 
+/// LSP WebSocket 所需共享状态
+#[derive(Clone)]
+pub struct LspWSState {
+    pub multiplexer: Arc<crate::lsp::multiplexer::LSPMultiplexer>,
+}
+
 /// WebSocket 处理器入口函数
 pub async fn lsp_websocket_handler(
     ws: WebSocketUpgrade,
     Query(params): Query<WSConnectParams>,
-    State(state): State<Arc<crate::AppState>>,
+    State(state): State<LspWSState>,
 ) -> Response {
-    let multiplexer = state.lsp_multiplexer.clone();
+    let multiplexer = state.multiplexer.clone();
     let config = WSProxyConfig::default();
     let handler = Arc::new(WSProxyHandler::new(multiplexer, config));
-    
-    handler.handle_upgrade(ws, Query(params), None).await
+
+    handler.handle_upgrade(ws, params, None).await
 }
 
 /// 批量请求处理（用于批量发送多个请求）
 pub async fn handle_batch_request(
-    State(state): State<Arc<crate::AppState>>,
+    State(state): State<LspWSState>,
     Json(payload): Json<BatchLSPRequest>,
-) -> Result<Json<BatchLSPResponse>, crate::CoreError> {
-    let multiplexer = state.lsp_multiplexer.clone();
-    
+) -> std::result::Result<Json<BatchLSPResponse>, trycode_core::CoreError> {
+    let multiplexer = state.multiplexer.clone();
+
     let mut results = Vec::new();
-    
+
     for req in payload.requests {
         if let Some(client) = multiplexer.get_client(&req.language_id) {
             match client.send_request(&req.method, req.params).await {
@@ -337,7 +381,7 @@ pub async fn handle_batch_request(
             });
         }
     }
-    
+
     Ok(Json(BatchLSPResponse { results }))
 }
 

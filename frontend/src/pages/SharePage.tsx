@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircleIcon, XCircleIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, ArrowRightIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../../hooks/useAuth';
-import { useUIStore } from '../../stores';
-import { MonacoEditor } from '../../components/editor/MonacoEditor';
-import { TerminalComponent } from '../../components/terminal/Terminal';
-import { executeCode } from '../../utils/api';
-import { LANGUAGES, getLanguageById } from '../../utils/languages';
+import { CheckCircleIcon, XCircleIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, ArrowRightIcon, CodeBracketIcon } from '../utils/icons.ts';
+import { useAuth } from '../hooks/useAuth';
+import { useUIStore } from '../stores';
+import { MonacoEditor } from '../components/editor/MonacoEditor';
+import { TerminalComponent } from '../components/terminal/Terminal';
+import { executeCode } from '../utils/api';
+import { LANGUAGES, getLanguageById } from '../utils/languages';
 import clsx from 'clsx';
 
 export function SharePage() {

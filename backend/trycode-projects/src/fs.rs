@@ -1,5 +1,4 @@
 use sqlx::PgPool;
-use std::path::Path;
 use uuid::Uuid;
 
 use crate::models::{ProjectFile, CreateFileRequest, UpdateFileRequest};
@@ -36,10 +35,11 @@ impl FileSystem {
         }
 
         // Check if path already exists
-        let existing = sqlx::query_as!(ProjectFile,
+        let existing = sqlx::query_as::<_, ProjectFile>(
             "SELECT * FROM project_files WHERE project_id = $1 AND path = $2",
-            project_id, normalized_path
         )
+        .bind(project_id)
+        .bind(&normalized_path)
         .fetch_optional(&self.db)
         .await?;
 
@@ -56,10 +56,10 @@ impl FileSystem {
         }
 
         // Check total project size
-        let total_size: Option<i64> = sqlx::query_scalar!(
-            "SELECT COALESCE(SUM(size), 0) FROM project_files WHERE project_id = $1",
-            project_id
+        let total_size: Option<i64> = sqlx::query_scalar::<_, Option<i64>>(
+            "SELECT COALESCE(SUM(size), 0)::bigint FROM project_files WHERE project_id = $1",
         )
+        .bind(project_id)
         .fetch_one(&self.db)
         .await?;
 
@@ -70,23 +70,23 @@ impl FileSystem {
         let file_id = Uuid::new_v4();
         let now = chrono::Utc::now();
 
-        let file = sqlx::query_as!(ProjectFile,
+        let file = sqlx::query_as::<_, ProjectFile>(
             r#"
             INSERT INTO project_files (id, project_id, path, name, is_directory, parent_id, content, size, mime_type, encoding, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'utf-8', $10, $10)
             RETURNING *
             "#,
-            file_id,
-            project_id,
-            normalized_path,
-            request.name,
-            request.is_directory,
-            request.parent_id,
-            request.content.as_deref().map(|s| s.as_bytes().to_vec()),
-            size,
-            request.mime_type,
-            now
         )
+        .bind(file_id)
+        .bind(project_id)
+        .bind(normalized_path)
+        .bind(request.name)
+        .bind(request.is_directory)
+        .bind(request.parent_id)
+        .bind(request.content.as_deref().map(|s| s.as_bytes().to_vec()))
+        .bind(size)
+        .bind(request.mime_type)
+        .bind(now)
         .fetch_one(&self.db)
         .await?;
 
@@ -94,10 +94,11 @@ impl FileSystem {
     }
 
     pub async fn get_file(&self, project_id: Uuid, file_id: Uuid) -> Result<ProjectFile> {
-        let file = sqlx::query_as!(ProjectFile,
+        let file = sqlx::query_as::<_, ProjectFile>(
             "SELECT * FROM project_files WHERE project_id = $1 AND id = $2",
-            project_id, file_id
         )
+        .bind(project_id)
+        .bind(file_id)
         .fetch_optional(&self.db)
         .await?
         .ok_or(CoreError::NotFound("File not found".to_string()))?;
@@ -107,10 +108,11 @@ impl FileSystem {
 
     pub async fn get_file_by_path(&self, project_id: Uuid, path: &str) -> Result<ProjectFile> {
         let normalized = normalize_path(path);
-        let file = sqlx::query_as!(ProjectFile,
+        let file = sqlx::query_as::<_, ProjectFile>(
             "SELECT * FROM project_files WHERE project_id = $1 AND path = $2",
-            project_id, normalized
         )
+        .bind(project_id)
+        .bind(normalized)
         .fetch_optional(&self.db)
         .await?
         .ok_or(CoreError::NotFound("File not found".to_string()))?;
@@ -120,17 +122,18 @@ impl FileSystem {
 
     pub async fn list_files(&self, project_id: Uuid, parent_id: Option<Uuid>) -> Result<Vec<ProjectFile>> {
         let files = if let Some(parent_id) = parent_id {
-            sqlx::query_as!(ProjectFile,
+            sqlx::query_as::<_, ProjectFile>(
                 "SELECT * FROM project_files WHERE project_id = $1 AND parent_id = $2 ORDER BY is_directory DESC, name ASC",
-                project_id, parent_id
             )
+            .bind(project_id)
+            .bind(parent_id)
             .fetch_all(&self.db)
             .await?
         } else {
-            sqlx::query_as!(ProjectFile,
+            sqlx::query_as::<_, ProjectFile>(
                 "SELECT * FROM project_files WHERE project_id = $1 AND parent_id IS NULL ORDER BY is_directory DESC, name ASC",
-                project_id
             )
+            .bind(project_id)
             .fetch_all(&self.db)
             .await?
         };
@@ -139,10 +142,10 @@ impl FileSystem {
     }
 
     pub async fn list_all_files(&self, project_id: Uuid) -> Result<Vec<ProjectFile>> {
-        let files = sqlx::query_as!(ProjectFile,
+        let files = sqlx::query_as::<_, ProjectFile>(
             "SELECT * FROM project_files WHERE project_id = $1 ORDER BY path ASC",
-            project_id
         )
+        .bind(project_id)
         .fetch_all(&self.db)
         .await?;
 
@@ -160,10 +163,12 @@ impl FileSystem {
             let normalized = normalize_path(&new_path);
             if normalized != file.path {
                 // Check if new path exists
-                let existing = sqlx::query_as!(ProjectFile,
+                let existing = sqlx::query_as::<_, ProjectFile>(
                     "SELECT * FROM project_files WHERE project_id = $1 AND path = $2 AND id != $3",
-                    project_id, normalized, file_id
                 )
+                .bind(project_id)
+                .bind(&normalized)
+                .bind(file_id)
                 .fetch_optional(&self.db)
                 .await?;
 
@@ -187,10 +192,11 @@ impl FileSystem {
             }
 
             // Check total project size
-            let total_size: Option<i64> = sqlx::query_scalar!(
-                "SELECT COALESCE(SUM(size), 0) FROM project_files WHERE project_id = $1 AND id != $2",
-                project_id, file_id
+            let total_size: Option<i64> = sqlx::query_scalar::<_, Option<i64>>(
+                "SELECT COALESCE(SUM(size), 0)::bigint FROM project_files WHERE project_id = $1 AND id != $2",
             )
+            .bind(project_id)
+            .bind(file_id)
             .fetch_one(&self.db)
             .await?;
 
@@ -208,19 +214,19 @@ impl FileSystem {
 
         file.updated_at = chrono::Utc::now();
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE project_files SET path = $1, name = $2, content = $3, size = $4, mime_type = $5, updated_at = $6
             WHERE id = $7
             "#,
-            file.path,
-            file.name,
-            file.content,
-            file.size,
-            file.mime_type,
-            file.updated_at,
-            file_id
         )
+        .bind(&file.path)
+        .bind(&file.name)
+        .bind(&file.content)
+        .bind(file.size)
+        .bind(&file.mime_type)
+        .bind(file.updated_at)
+        .bind(file_id)
         .execute(&self.db)
         .await?;
 
@@ -232,10 +238,11 @@ impl FileSystem {
 
         if file.is_directory {
             // Check if directory is empty
-            let children = sqlx::query_as!(ProjectFile,
+            let children = sqlx::query_as::<_, ProjectFile>(
                 "SELECT * FROM project_files WHERE project_id = $1 AND parent_id = $2",
-                project_id, file_id
             )
+            .bind(project_id)
+            .bind(file_id)
             .fetch_all(&self.db)
             .await?;
 
@@ -244,7 +251,8 @@ impl FileSystem {
             }
         }
 
-        sqlx::query!("DELETE FROM project_files WHERE id = $1", file_id)
+        sqlx::query("DELETE FROM project_files WHERE id = $1")
+            .bind(file_id)
             .execute(&self.db)
             .await?;
 
@@ -290,17 +298,17 @@ impl FileSystem {
 
         file.updated_at = chrono::Utc::now();
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE project_files SET parent_id = $1, name = $2, path = $3, updated_at = $4
             WHERE id = $5
             "#,
-            file.parent_id,
-            file.name,
-            file.path,
-            file.updated_at,
-            file_id
         )
+        .bind(file.parent_id)
+        .bind(&file.name)
+        .bind(&file.path)
+        .bind(file.updated_at)
+        .bind(file_id)
         .execute(&self.db)
         .await?;
 
@@ -320,34 +328,36 @@ fn normalize_path(path: &str) -> String {
 
 async fn build_path(db: &PgPool, project_id: Uuid, parent_id: Option<Uuid>, name: &str) -> Result<String> {
     if let Some(parent_id) = parent_id {
-        let parent = sqlx::query_as!(ProjectFile,
-            "SELECT path FROM project_files WHERE id = $1", parent_id
-        )
-        .fetch_one(db)
-        .await?;
-        Ok(format!("{}/{}", parent.path, name))
+        let parent = sqlx::query_as::<_, (String,)>("SELECT path FROM project_files WHERE id = $1")
+            .bind(parent_id)
+            .fetch_one(db)
+            .await?;
+        Ok(format!("{}/{}", parent.0, name))
     } else {
         Ok(name.to_string())
     }
 }
 
 async fn update_children_paths(db: &PgPool, project_id: Uuid, parent_id: Uuid, new_parent_path: &str) -> Result<()> {
-    let children = sqlx::query_as!(ProjectFile,
+    let children = sqlx::query_as::<_, (Uuid, String, bool)>(
         "SELECT id, name, is_directory FROM project_files WHERE project_id = $1 AND parent_id = $2",
-        project_id, parent_id
     )
+    .bind(project_id)
+    .bind(parent_id)
     .fetch_all(db)
     .await?;
 
     for child in children {
-        let new_path = format!("{}/{}", new_parent_path, child.name);
-        
-        sqlx::query!("UPDATE project_files SET path = $1 WHERE id = $2", new_path, child.id)
+        let new_path = format!("{}/{}", new_parent_path, child.1);
+
+        sqlx::query("UPDATE project_files SET path = $1 WHERE id = $2")
+            .bind(&new_path)
+            .bind(child.0)
             .execute(db)
             .await?;
 
-        if child.is_directory {
-            update_children_paths(db, project_id, child.id, &new_path).await?;
+        if child.2 {
+            Box::pin(update_children_paths(db, project_id, child.0, &new_path)).await?;
         }
     }
 

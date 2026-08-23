@@ -16,7 +16,7 @@ members = [
 tokio = { version = "1.39", features = ["full", "tracing"] }
 axum = { version = "0.7", features = ["macros", "json", "multipart", "ws"] }
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.6", features = ["cors", "trace", "fs", "services", "compression", "limit", "classify"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "fs", "limit"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "3.5"
@@ -25,23 +25,23 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter", "registry"] }
 tracing-opentelemetry = "0.26"
-opentelemetry = { version = "0.26", features = ["trace", "metrics", "exporter"] }
+opentelemetry = { version = "0.26", features = ["trace", "metrics"] }
 opentelemetry-otlp = "0.26"
 metrics = "0.21"
 metrics-exporter-prometheus = "0.13"
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "migrate", "offline"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "migrate"] }
 sqlx-postgres = "0.7"
-deadpool-postgres = { version = "0.14", features = ["tokio", "config"] }
+deadpool-postgres = { version = "0.14" }
 tokio-postgres = "0.7"
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager", "streams", "scripts"] }
-deadpool-redis = { version = "0.14", features = ["tokio", "config"] }
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager", "streams", "script"] }
+deadpool-redis = { version = "0.14" }
 
 # Auth & Security
 argon2 = "0.5"
 jsonwebtoken = "9.2"
-uuid = { version = "1.6", features = ["v4", "v7", "serde", "sqlx"] }
+uuid = { version = "1.6", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 rand = { version = "0.8", features = ["std"] }
 base64 = { version = "0.21", features = ["std"] }
@@ -51,7 +51,7 @@ secrecy = "0.8"
 zeroize = "1.6"
 
 # Config
-figment = { version = "0.11", features = ["toml", "env", "serde"] }
+figment = { version = "0.10", features = ["toml", "env"] }
 config = "0.13"
 
 # HTTP Client
@@ -61,25 +61,25 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream", "multi
 validator = { version = "0.17", features = ["derive"] }
 
 # Email
-lettre = { version = "0.11", features = ["tokio1", "rustls-tls", "builder", "async-transport"] }
+lettre = { version = "0.11", default-features = false, features = ["builder", "tokio1", "tokio1-rustls-tls", "smtp-transport"] }
 tera = "1.19"
 
 # CAPTCHA
 async-trait = "0.1"
 
 # OAuth
-oauth2 = { version = "5.3", features = ["reqwest", "pkce", "tokio"] }
+oauth2 = { version = "5.0", features = ["reqwest", "pkce-plain"] }
 
 # Execution
-bollard = { version = "0.16", features = ["tokio", "json", "stream"] }
+bollard = { version = "0.16", features = ["hyper-rustls"] }
 docker-api = { version = "0.5", features = ["tokio"] }
 
 # Collaboration
-yrs = { version = "0.21", features = ["tokio", "sqlite", "uuid", "serde"] }
+yrs = { version = "0.21" }
 yrs-awareness = "0.21"
 
 # Rate limiting
-governor = { version = "0.6", features = ["axum"] }
+governor = { version = "0.6" }
 
 # Compression
 flate2 = "1.0"
@@ -98,6 +98,7 @@ bytes = "1.5"
 http = "1.1"
 hyper = { version = "1.4", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
+urlencoding = "2"
 
 [workspace.lints]
 rust.unused_crate_dependencies = "warn"

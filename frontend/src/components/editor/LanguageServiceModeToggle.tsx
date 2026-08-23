@@ -5,7 +5,7 @@ import {
   CpuChipIcon as HybridIcon,
   CheckIcon,
   InformationCircleIcon,
-} from '@heroicons/react/24/outline';
+} from '../../utils/icons.ts';
 import clsx from 'clsx';
 
 interface LanguageServiceModeToggleProps {

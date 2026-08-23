@@ -1,11 +1,13 @@
 use chrono::{DateTime, Utc};
 use redis::AsyncCommands;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::interval;
 use tracing::{debug, error, info, warn};
+use uuid::Uuid;
 
 use crate::models::{Execution, ExecutionStatus, QueueMessage, ResourceLimits};
 use crate::pool::ExecutorPool;
@@ -161,15 +163,21 @@ impl ExecutionScheduler {
                         }
 
                         // Execute
-                        let result = pool.execute(message.clone()).await;
+                        let exec_result = match pool.execute(message.clone()).await {
+                            Ok(r) => r,
+                            Err(e) => {
+                                error!("Worker {} execution error: {}", worker_id, e);
+                                continue;
+                            }
+                        };
 
                         // Update execution with result
-                        if let Err(e) = Self::update_execution_result(&redis, &message.execution_id, &result).await {
+                        if let Err(e) = Self::update_execution_result(&redis, &message.execution_id, &exec_result).await {
                             error!("Failed to update execution result: {}", e);
                         }
 
                         // Update metrics
-                        if let Err(e) = Self::record_metrics(&redis, &message, &result).await {
+                        if let Err(e) = Self::record_metrics(&redis, &message, &exec_result).await {
                             error!("Failed to record metrics: {}", e);
                         }
                     }
@@ -185,21 +193,30 @@ impl ExecutionScheduler {
     }
 
     async fn update_execution_status(redis: &deadpool_redis::Pool, execution_id: &Uuid, status: ExecutionStatus) -> Result<()> {
-        let mut con = redis.get().await?;
+        let mut con = redis
+            .get()
+            .await
+            .map_err(|e| CoreError::Internal(e.to_string()))?;
         let key = format!("exec:status:{}", execution_id);
         let _: () = con.set(&key, serde_json::to_string(&status)?).await?;
         Ok(())
     }
 
-    async fn update_execution_result(redis: &deadpool_redis::Pool, execution_id: &Uuid, result: &crate::pool::ExecutionResult) -> Result<()> {
-        let mut con = redis.get().await?;
+    async fn update_execution_result(redis: &deadpool_redis::Pool, execution_id: &Uuid, result: &crate::models::ExecutionResult) -> Result<()> {
+        let mut con = redis
+            .get()
+            .await
+            .map_err(|e| CoreError::Internal(e.to_string()))?;
         let key = format!("exec:result:{}", execution_id);
         let _: () = con.set(&key, serde_json::to_string(result)?).await?;
         Ok(())
     }
 
-    async fn record_metrics(redis: &deadpool_redis::Pool, message: &QueueMessage, result: &crate::pool::ExecutionResult) -> Result<()> {
-        let mut con = redis.get().await?;
+    async fn record_metrics(redis: &deadpool_redis::Pool, message: &QueueMessage, result: &crate::models::ExecutionResult) -> Result<()> {
+        let mut con = redis
+            .get()
+            .await
+            .map_err(|e| CoreError::Internal(e.to_string()))?;
         
         let metrics = serde_json::json!({
             "language": message.language,
@@ -223,7 +240,11 @@ impl ExecutionScheduler {
     }
 
     pub async fn get_queue_stats(&self) -> Result<QueueStats> {
-        let mut con = self.redis.get().await?;
+        let mut con = self
+            .redis
+            .get()
+            .await
+            .map_err(|e| CoreError::Internal(e.to_string()))?;
         
         let queued: u64 = con.xlen("exec:queue").await?;
         

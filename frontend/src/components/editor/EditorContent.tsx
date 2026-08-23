@@ -1,31 +1,35 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import Editor from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
-import { useLanguageServiceManager } from '../../hooks/useLanguageServiceManager';
+import { useEffect, useState, useCallback } from 'react';
+import { useLanguageServiceManager } from './LanguageServiceManager';
 import { useEditorStore } from '../../stores';
-import { LANGUAGES, getLanguageById } from '../../utils/languages';
+import { LANGUAGES } from '../../utils/languages';
 import { clsx } from 'clsx';
-import { 
-  MenuIcon, 
-  XMarkIcon, 
-  ChevronLeftIcon, 
-  ChevronRightIcon,
+import {
+  MenuIcon,
+  XMarkIcon,
   LayoutIcon,
   CodeIcon,
   TerminalIcon,
   SmartphoneIcon,
-  TabletIcon,
-  DesktopIcon,
-} from '@heroicons/react/24/outline';
+  FolderIcon,
+  FileCodeIcon,
+  PlusIcon,
+  FolderPlusIcon,
+  ChevronDownIcon,
+  WifiOffIcon,
+  ArrowPathIcon,
+} from '../../utils/icons';
+import { Link } from 'react-router-dom';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { usePWA } from '../../hooks/usePWA';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
 import { MobileFileTree } from './MobileFileTree';
-import { MobileTerminal } from './MobileTerminal';
 import { MobileLanguageSelector } from './MobileLanguageSelector';
 import { MobileModeSelector } from './MobileModeSelector';
+import { MonacoEditor } from './MonacoEditor';
+import { TerminalComponent } from '../terminal/Terminal';
+import { FileTree } from '../filetree/FileTree';
 import { CollabBar } from '../collab/CollabBar';
-import { usePWA } from '../../hooks/usePWA';
+import { getFileIcon } from '../../utils/fileIcons';
 
 interface EditorContentProps {
   fileId: string;
@@ -44,31 +48,25 @@ export function EditorContent({
   height = '100%',
   width = '100%',
 }: EditorContentProps) {
-  const editorRef = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
   const [layout, setLayout] = useState<'editor' | 'terminal' | 'split' | 'files'>('editor');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [terminalOpen, setTerminalOpen] = useState(false);
-  const [terminalHeight, setTerminalHeight] = useState(200);
-  const [showMobileToolbar, setShowMobileToolbar] = useState(true);
-  
-  const { 
-    fileContents, 
-    setFileContent, 
-    markSaved,
+  const [terminalHeight] = useState(200);
+
+  const {
+    setFileContent,
     unsavedFiles,
     collabUsers,
-    mode,
     setMode,
     currentLanguage,
     setCurrentLanguage,
     sidebarWidth,
     setSidebarWidth,
     showTerminal,
-    setShowTerminal,
     showOutput,
     setShowOutput,
-    fileContents,
+    currentProject,
+    files,
     selectedFileId,
     setSelectedFileId,
     activeTabId,
@@ -76,13 +74,11 @@ export function EditorContent({
     openTabs,
     addTab,
     closeTab,
-    collabUsers,
   } = useEditorStore();
-  
-  const { connectLSP, disconnectLSP, state: lspState } = useLanguageServiceManager();
-  const [lspConnected, setLspConnected] = useState(false);
-  
-  const { isOnline, isInstalled, install } = usePWA();
+
+  const { state: lspState } = useLanguageServiceManager();
+
+  const { isOnline, isInstallable, isInstalled, install, updateAvailable, applyUpdate } = usePWA();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isTablet = useMediaQuery('(max-width: 1024px)');
   const isDesktop = useMediaQuery('(min-width: 1025px)');
@@ -93,130 +89,19 @@ export function EditorContent({
     setMounted(true);
   }, []);
 
-  // 初始内容
-  const initialContent = fileContents[fileId] || '';
 
-  // 语言映射
-  const getMonacoLanguage = (lang: string): string => {
-    const langMap: Record<string, string> = {
-      python: 'python',
-      javascript: 'javascript',
-      typescript: 'typescript',
-      rust: 'rust',
-      go: 'go',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      csharp: 'csharp',
-      php: 'php',
-      ruby: 'ruby',
-      swift: 'swift',
-      kotlin: 'kotlin',
-      scala: 'scala',
-      r: 'r',
-      lua: 'lua',
-      perl: 'perl',
-      dart: 'dart',
-      zig: 'zig',
-      julia: 'julia',
-      haskell: 'haskell',
-      fortran: 'fortran',
-      objectivec: 'objective-c',
-      vbnet: 'vb',
-      fsharp: 'fsharp',
-      groovy: 'groovy',
-      html: 'html',
-      css: 'css',
-      sql: 'sql',
-      bash: 'shell',
-      powershell: 'powershell',
-    };
-    return langMap[lang] || 'plaintext';
-  };
-
-  // 处理编辑器挂载
-  const handleEditorMount = useCallback((editor: any, monacoInstance: typeof monaco) => {
-    editorRef.current = editor;
-    
-    // 设置内容变化监听
-    editor.onDidChangeModelContent(() => {
-      const content = editor.getValue();
-      setFileContent(fileId, content);
-      onContentChange?.(content);
-    });
-
-    // 保存快捷键
-    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
-      markSaved(fileId);
-    });
-
-    // 配置编辑器选项
-    editor.updateOptions({
-      readOnly,
-      tabSize: language === 'python' ? 4 : 2,
-      insertSpaces: true,
-      detectIndentation: true,
-      renderWhitespace: 'selection',
-      renderControlCharacters: true,
-      folding: true,
-      lineNumbers: 'on',
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      automaticLayout: true,
-      wordWrap: 'on',
-      cursorBlinking: 'smooth',
-      cursorSmoothCaretAnimation: 'on',
-      smoothScrolling: true,
-      fontSize: isMobileLayout ? 13 : 14,
-      lineHeight: 20,
-      letterSpacing: 0.5,
-    });
-
-    // 如果是 LSP 模式，连接 LSP
-    if (lspState.mode === 'lsp' || lspState.mode === 'hybrid') {
-      console.log('LSP mode enabled for language:', language);
+  // 新建文件
+  const handleNewFile = useCallback(() => {
+    const name = window.prompt('新文件名称');
+    if (name && name.trim()) {
+      // 实际实现中会通过文件树/后端创建文件
+      console.log('Create new file:', name.trim());
     }
-  }, [fileId, language, readOnly, setFileContent, markSaved, onContentChange]);
-
-  // 语言变更时重新连接 LSP
-  useEffect(() => {
-    if (lspState.mode === 'lsp' || lspState.mode === 'hybrid') {
-      // 实际实现中重新连接 LSP
-    }
-  }, [language]);
-
-  // 处理模式切换
-  const handleModeChange = useCallback((newMode: 'monaco' | 'lsp' | 'hybrid') => {
-    setMode(newMode);
-    if (newMode === 'monaco') {
-      // 断开 LSP
-    } else if (newMode === 'lsp' || newMode === 'hybrid') {
-      // 连接 LSP
-    }
-  }, [setMode]);
+  }, []);
 
   // 处理布局切换
   const handleLayoutChange = useCallback((newLayout: 'editor' | 'terminal' | 'split' | 'files') => {
     setLayout(newLayout);
-  }, []);
-
-  // 处理终端高度调整
-  const handleTerminalResize = useCallback((e: React.MouseEvent) => {
-    const startY = e.clientY;
-    const startHeight = terminalHeight;
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaY = startY - e.clientY;
-      setTerminalHeight(Math.max(100, Math.min(500, startHeight + deltaY)));
-    };
-    
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
   // 处理侧边栏宽度调整
@@ -295,38 +180,8 @@ export function EditorContent({
     );
   }
 
-  const monacoLanguage = getMonacoLanguage(language);
-
-  // 获取 Monaco 编辑器配置
-  const editorOptions = useMemo(() => ({
-    readOnly,
-    tabSize: language === 'python' ? 4 : 2,
-    insertSpaces: true,
-    detectIndentation: true,
-    renderWhitespace: 'selection',
-    renderControlCharacters: true,
-    folding: true,
-    lineNumbers: 'on',
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    automaticLayout: true,
-    wordWrap: 'on',
-    cursorBlinking: 'smooth',
-    cursorSmoothCaretAnimation: 'on',
-    smoothScrolling: true,
-    fontSize: isMobileLayout ? 13 : 14,
-    lineHeight: 20,
-    letterSpacing: 0.5,
-  }), [language, readOnly, isMobileLayout]);
-
-  // 获取 Monaco 语言 ID
-  const monacoLanguage = getMonacoLanguage(language);
-
-  // 当前文件内容
-  const currentFileContent = fileContents[selectedFileId] || initialContent;
-
-  return (
-    <div className="h-full w-full relative flex flex-col bg-background" style={{ height, width }}>
+    return (
+    <div className="h-full w-full relative flex flex-col bg-background" data-file-id={fileId} data-language={language} style={{ height, width }}>
       {/* 顶部工具栏 */}
       <header className={clsx(
         'h-12 px-3 border-b border-border flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
@@ -423,8 +278,12 @@ export function EditorContent({
                 onLayoutChange={handleLayoutChange}
                 onModeChange={handleModeChange}
                 mode={lspState.mode}
-                isOnline={true}
-                isOnlineCheck={true}
+                isOnline={isOnline}
+                isInstallable={isInstallable}
+                isInstalled={isInstalled}
+                install={install}
+                updateAvailable={updateAvailable}
+                applyUpdate={applyUpdate}
               />
             )}
             
@@ -480,6 +339,7 @@ export function EditorContent({
               </button>
             )}
           </div>
+          </div>
         </header>
 
         {/* 主内容区 */}
@@ -506,8 +366,9 @@ export function EditorContent({
                   onFileMove={() => {}}
                 />
               </div>
-            )}
-            
+            </aside>
+          )}
+
             {/* 桌面端侧边栏 */}
             {!isMobileLayout && sidebarOpen && (
               <aside className={clsx('bg-card border-r border-border flex flex-col', 'w-[280px]')}>
@@ -552,7 +413,8 @@ export function EditorContent({
                     if (!file) return null;
                     const isActive = activeTabId === tabId;
                     const isUnsaved = unsavedFiles.has(tabId);
-                    
+                    const FileIconCmp = getFileIcon(file.name, file.mime_type);
+
                     return (
                       <button
                         key={tabId}
@@ -571,7 +433,7 @@ export function EditorContent({
                             : 'hover:bg-accent'
                         )}
                       >
-                        {getFileIcon(file.name, file.mime_type, 'w-4 h-4')}
+                        <FileIconCmp className="w-4 h-4" />
                         <span className="truncate max-w-[150px]">{file.name}</span>
                         {isUnsaved && <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full" />}
                         <button
@@ -603,7 +465,11 @@ export function EditorContent({
                     <MonacoEditor
                       fileId={selectedFileId}
                       language={currentLanguage}
-                      onContentChange={(content) => setFileContent(selectedFileId!, content)}
+                      readOnly={readOnly}
+                      onContentChange={(content) => {
+                        setFileContent(selectedFileId, content);
+                        onContentChange?.(content);
+                      }}
                       height="100%"
                     />
                   </div>
@@ -645,46 +511,7 @@ export function EditorContent({
             {collabUsers.length > 0 && (
               <CollabBar users={collabUsers} />
             )}
-          </div>
         </div>
       </div>
-    </div>
   );
-}
-
-function getMonacoLanguage(language: string): string {
-  const langMap: Record<string, string> = {
-    python: 'python',
-    javascript: 'javascript',
-    typescript: 'typescript',
-    rust: 'rust',
-    go: 'go',
-    java: 'java',
-    cpp: 'cpp',
-    c: 'c',
-    csharp: 'csharp',
-    php: 'php',
-    ruby: 'ruby',
-    swift: 'swift',
-    kotlin: 'kotlin',
-    scala: 'scala',
-    r: 'r',
-    lua: 'lua',
-    perl: 'perl',
-    dart: 'dart',
-    zig: 'zig',
-    julia: 'julia',
-    haskell: 'haskell',
-    fortran: 'fortran',
-    objectivec: 'objective-c',
-    vbnet: 'vb',
-    fsharp: 'fsharp',
-    groovy: 'groovy',
-    html: 'html',
-    css: 'css',
-    sql: 'sql',
-    bash: 'shell',
-    powershell: 'powershell',
-  };
-  return langMap[language] || 'plaintext';
 }

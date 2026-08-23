@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDownIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, CheckIcon } from '../../utils/icons.ts';
 import { LANGUAGES, Language } from '../../utils/languages';
 import clsx from 'clsx';
 

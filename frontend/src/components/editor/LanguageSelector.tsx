@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDownIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { LANGUAGES, getLanguageById } from '../../utils/languages';
+import { ChevronDownIcon, CheckIcon } from '../../utils/icons.ts';
+import { LANGUAGES } from '../../utils/languages';
 import clsx from 'clsx';
 
 interface LanguageSelectorProps {
